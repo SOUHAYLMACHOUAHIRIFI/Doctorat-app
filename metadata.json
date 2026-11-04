@@ -1,0 +1,6 @@
+{
+  "name": "GCD USMBA — Gestion Doctorale",
+  "description": "Plateforme épurée et minimaliste de gestion du cycle doctoral de l'Université Sidi Mohamed Ben Abdellah (USMBA).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

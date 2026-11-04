@@ -5,18 +5,16 @@ import {
   Search,
   ArrowRight,
   CheckCircle2,
-  Clock,
   Check,
   FileText,
   Upload,
   Trash2,
   RefreshCw,
-  AlertTriangle,
-  Building2,
   CreditCard,
   GraduationCap,
   FileCheck,
-  Sparkles,
+  Building2,
+  ChevronRight,
 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
 
@@ -46,9 +44,6 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   // Confirmation state for deleting application
   const [confirmDeleteAppId, setConfirmDeleteAppId] = useState<string | null>(null);
 
-  // Upload modal / trigger simulation
-  const [uploadingDocType, setUploadingDocType] = useState<DocumentType | null>(null);
-
   // Filter topics cleanly
   const filteredTopics = useMemo(() => {
     return topics.filter((t) => {
@@ -66,13 +61,13 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     });
   }, [topics, searchQuery, selectedEstablishment]);
 
-  // Steps definition for the 5-step progress bar required by prompt:
+  // Steps definition for the 5-step progress bar:
   // Dossier soumis ➔ Validation structure ➔ Sélection ➔ Entretien ➔ Admis
   const PROGRESS_STEPS: { step: ApplicationStep; label: string; desc: string }[] = [
     { step: 1, label: 'Dossier soumis', desc: 'Dépôt des pièces initial' },
-    { step: 2, label: 'Validation structure', desc: 'Examen de conformité du labo' },
+    { step: 2, label: 'Validation structure', desc: 'Conformité labo/structure' },
     { step: 3, label: 'Sélection', desc: 'Présélection sur dossier' },
-    { step: 4, label: 'Entretien', desc: 'Audition devant la commission' },
+    { step: 4, label: 'Entretien', desc: 'Audition devant jury' },
     { step: 5, label: 'Admis', desc: 'Inscription définitive validée' },
   ];
 
@@ -89,19 +84,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     {
       type: 'releve_notes',
       label: 'Fiches de notes',
-      description: 'Relevés de notes de toutes les années universitaires (Licence & Master)',
+      description: 'Relevés de notes de Licence et Master',
       icon: FileText,
     },
     {
       type: 'diplomes',
       label: 'Diplômes universitaires',
-      description: 'Attestations de réussite et diplômes de Licence et Master / Ingénieur',
+      description: 'Attestations & diplômes de Licence et Master / Ingénieur',
       icon: FileCheck,
     },
     {
       type: 'cin',
       label: 'Carte Nationale (CIN)',
-      description: 'Scan recto/verso net de la Carte d’Identité Nationale en cours de validité',
+      description: 'Scan recto/verso net de la CIN en cours de validité',
       icon: CreditCard,
     },
   ];
@@ -115,106 +110,112 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 bg-white text-neutral-900">
-      {/* Candidate Header Summary */}
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 bg-white text-neutral-900">
+      {/* Candidate Profile Header Card */}
       {currentUser && (
-        <div className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">
                 Espace Candidat
               </span>
               <span className="text-neutral-300">·</span>
-              <span className="text-xs text-neutral-600 font-mono">{currentUser.email}</span>
+              <span className="text-xs text-neutral-600 font-mono truncate max-w-[220px] sm:max-w-none">
+                {currentUser.email}
+              </span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-neutral-900">
               {currentUser.name}
             </h1>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
-              {currentUser.cin && <span>CIN : <strong className="font-mono text-neutral-800">{currentUser.cin}</strong></span>}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+              {currentUser.cin && (
+                <span>CIN : <strong className="font-mono text-neutral-800">{currentUser.cin}</strong></span>
+              )}
               {currentUser.phone && (
                 <>
-                  <span className="text-neutral-300">·</span>
+                  <span className="text-neutral-300 hidden sm:inline">·</span>
                   <span>Tél : <strong className="font-mono text-neutral-800">{currentUser.phone}</strong></span>
                 </>
               )}
-              <span className="text-neutral-300">·</span>
+              <span className="text-neutral-300 hidden sm:inline">·</span>
               <span>{currentUser.establishment || 'FST Fès'}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={onOpenReReg}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Se réinscrire (Annuel)</span>
+              <span>Déposer réinscription</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Clean Navigation Sub-Tabs */}
-      <div className="flex items-center gap-8 border-b border-neutral-200 pb-3 text-sm">
-        <button
-          onClick={() => setActiveTab('catalogue')}
-          className={`font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 ${
-            activeTab === 'catalogue'
-              ? 'border-neutral-900 text-neutral-900'
-              : 'border-transparent text-neutral-500 hover:text-neutral-900'
-          }`}
-        >
-          1. Recherche de Sujets
-        </button>
+      {/* Responsive Horizontal Scroll Sub-Tabs */}
+      <div className="border-b border-neutral-200 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-4 sm:gap-8 min-w-max pb-3 text-xs sm:text-sm">
+          <button
+            onClick={() => setActiveTab('catalogue')}
+            className={`font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
+              activeTab === 'catalogue'
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            1. Recherche de Sujets
+          </button>
 
-        <button
-          onClick={() => setActiveTab('suivi')}
-          className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 ${
-            activeTab === 'suivi'
-              ? 'border-neutral-900 text-neutral-900'
-              : 'border-transparent text-neutral-500 hover:text-neutral-900'
-          }`}
-        >
-          <span>2. Mes Candidatures & Avancement</span>
-          {currentCandidateApp && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-          )}
-        </button>
+          <button
+            onClick={() => setActiveTab('suivi')}
+            className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
+              activeTab === 'suivi'
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <span>2. Mes Candidatures & Avancement</span>
+            {currentCandidateApp && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            )}
+          </button>
 
-        <button
-          onClick={() => setActiveTab('documents')}
-          className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 ${
-            activeTab === 'documents'
-              ? 'border-neutral-900 text-neutral-900'
-              : 'border-transparent text-neutral-500 hover:text-neutral-900'
-          }`}
-        >
-          <span>3. Gestion des Documents (Scans)</span>
-          <span className="px-1.5 py-0.5 text-[10px] bg-neutral-100 rounded-md font-mono text-neutral-600">
-            {documents.filter((d) => d.candidateEmail === currentUser?.email).length}/4
-          </span>
-        </button>
+          <button
+            onClick={() => setActiveTab('documents')}
+            className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
+              activeTab === 'documents'
+                ? 'border-neutral-900 text-neutral-900'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            }`}
+          >
+            <span>3. Gestion des Documents (Scans)</span>
+            <span className="px-1.5 py-0.5 text-[10px] bg-neutral-100 rounded-md font-mono text-neutral-700">
+              {documents.filter((d) => d.candidateEmail === currentUser?.email).length}/4
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: RECHERCHE DE SUJETS */}
       {activeTab === 'catalogue' && (
         <div className="space-y-6">
-          {/* Dynamic Search Bar */}
-          <div className="max-w-3xl mx-auto space-y-4">
+          {/* Dynamic Search Bar & Filters */}
+          <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Rechercher dynamiquement un sujet par mot-clé, titre, laboratoire ou encadrant..."
-                className="w-full pl-12 pr-4 py-3.5 text-sm bg-white border border-neutral-200 rounded-xl shadow-xs focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900 placeholder:text-neutral-400"
+                placeholder="Rechercher par mot-clé, titre, laboratoire ou encadrant..."
+                className="w-full pl-10 sm:pl-12 pr-12 py-3 text-xs sm:text-sm bg-white border border-neutral-200 rounded-xl shadow-xs focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900 placeholder:text-neutral-400"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-700"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-700"
                 >
                   Effacer
                 </button>
@@ -222,15 +223,15 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
             </div>
 
             {/* Filter buttons by establishment */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="text-neutral-400 mr-1 shrink-0">Établissement :</span>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+              <span className="text-neutral-400 mr-1 shrink-0 hidden sm:inline">Établissement :</span>
               {['Tous', ...ESTABLISHMENTS].map((est) => {
                 const isSelected = selectedEstablishment === est;
                 return (
                   <button
                     key={est}
                     onClick={() => setSelectedEstablishment(est)}
-                    className={`px-3 py-1 rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                    className={`px-3 py-1.5 sm:py-1 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
                       isSelected
                         ? 'bg-neutral-900 text-white font-medium'
                         : 'bg-neutral-100 text-neutral-600 hover:text-neutral-900'
@@ -247,14 +248,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span className="tabular-nums">
-                {filteredTopics.length} sujet{filteredTopics.length > 1 ? 's' : ''} ouvert{filteredTopics.length > 1 ? 's' : ''} à la candidature
+                {filteredTopics.length} sujet{filteredTopics.length > 1 ? 's' : ''} disponible{filteredTopics.length > 1 ? 's' : ''}
               </span>
-              <span>Session Doctorale 2026-2027</span>
+              <span>Année Universitaire 2026-2027</span>
             </div>
 
             {filteredTopics.length === 0 ? (
-              <div className="py-16 text-center border border-dashed border-neutral-200 rounded-2xl bg-white">
-                <p className="text-sm text-neutral-500">Aucun sujet ne correspond à votre recherche.</p>
+              <div className="py-12 sm:py-16 text-center border border-dashed border-neutral-200 rounded-2xl bg-white px-4">
+                <p className="text-sm text-neutral-500">Aucun sujet ne correspond à vos filtres.</p>
                 <button
                   onClick={() => {
                     setSearchQuery('');
@@ -262,11 +263,11 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   }}
                   className="mt-3 text-xs font-semibold text-neutral-900 underline underline-offset-4"
                 >
-                  Réinitialiser la recherche
+                  Réinitialiser les critères
                 </button>
               </div>
             ) : (
-              <div className="divide-y divide-neutral-200 border border-neutral-200 rounded-2xl overflow-hidden bg-white">
+              <div className="divide-y divide-neutral-200 border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                 {filteredTopics.map((topic) => {
                   const alreadyApplied = applications.some(
                     (a) => a.topicId === topic.id && a.candidateEmail === currentUser?.email
@@ -276,21 +277,21 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   return (
                     <article
                       key={topic.id}
-                      className="p-5 sm:p-6 hover:bg-neutral-50/60 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6"
+                      className="p-4 sm:p-6 hover:bg-neutral-50/60 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6"
                     >
                       <div className="space-y-2 max-w-2xl">
-                        <h3 className="text-base sm:text-lg font-semibold text-neutral-900 tracking-tight leading-snug">
+                        <h3 className="text-sm sm:text-base font-bold text-neutral-900 tracking-tight leading-snug">
                           {topic.title}
                         </h3>
 
-                        <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-neutral-600">
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-neutral-600">
                           <span className="font-semibold text-neutral-900">{topic.establishment}</span>
                           <span aria-hidden="true" className="text-neutral-300">·</span>
                           <span>{topic.laboratory}</span>
                           <span aria-hidden="true" className="text-neutral-300">·</span>
                           <span>Dir. {topic.supervisorName}</span>
                           <span aria-hidden="true" className="text-neutral-300">·</span>
-                          <span className="text-emerald-700 font-medium">Validé par la structure</span>
+                          <span className="text-emerald-700 font-semibold">Validé structure</span>
                         </div>
 
                         <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">
@@ -309,22 +310,22 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 pt-2 md:pt-0 w-full sm:w-auto">
                         {alreadyApplied ? (
-                          <div className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-emerald-800 bg-emerald-50 rounded-xl">
+                          <div className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
                             <Check className="w-3.5 h-3.5" />
-                            <span>Candidature active</span>
+                            <span>Candidature transmise</span>
                           </div>
                         ) : isAvailable ? (
                           <button
                             onClick={() => onOpenApply(topic)}
-                            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap"
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
                           >
                             <span>Postuler en 1 clic</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <span className="text-xs text-neutral-400 italic">Places pourvues</span>
+                          <span className="text-xs text-neutral-400 italic">Places déjà pourvues</span>
                         )}
                       </div>
                     </article>
@@ -338,55 +339,57 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
       {/* TAB 2: SUIVI DE L'AVANCEMENT & GESTION DE LA CANDIDATURE */}
       {activeTab === 'suivi' && (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {currentCandidateApp ? (
-            <div className="p-6 sm:p-8 border border-neutral-200 rounded-2xl bg-white space-y-8 shadow-xs">
+            <div className="p-4 sm:p-6 md:p-8 border border-neutral-200 rounded-2xl bg-white space-y-6 sm:space-y-8 shadow-xs">
               {/* Header with Title and Delete action */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-neutral-100 pb-5">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                    Dossier de Thèse en cours d'instruction
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                    Dossier de Doctorat en cours
                   </div>
-                  <h2 className="text-lg sm:text-xl font-bold text-neutral-900 leading-snug">
+                  <h2 className="text-base sm:text-lg md:text-xl font-bold text-neutral-900 leading-snug">
                     {currentCandidateApp.topicTitle}
                   </h2>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 pt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500 pt-1">
                     <span>{currentCandidateApp.establishment}</span>
                     <span aria-hidden="true">·</span>
                     <span>{currentCandidateApp.laboratory}</span>
                     <span aria-hidden="true">·</span>
-                    <span>Directeur de thèse : {currentCandidateApp.supervisorName}</span>
+                    <span>Directeur : {currentCandidateApp.supervisorName}</span>
                     <span aria-hidden="true">·</span>
                     <span>Déposé le {currentCandidateApp.submittedDate}</span>
                   </div>
                 </div>
 
-                {/* Possibilité de supprimer sa candidature */}
-                <div>
+                {/* Option pour supprimer sa candidature */}
+                <div className="w-full sm:w-auto pt-2 sm:pt-0">
                   {confirmDeleteAppId === currentCandidateApp.id ? (
-                    <div className="flex items-center gap-2 p-2 bg-rose-50 border border-rose-200 rounded-xl">
-                      <span className="text-xs text-rose-800 font-medium">Confirmer le désistement ?</span>
-                      <button
-                        onClick={() => {
-                          deleteApplication(currentCandidateApp.id);
-                          setConfirmDeleteAppId(null);
-                        }}
-                        className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700"
-                      >
-                        Oui, supprimer
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteAppId(null)}
-                        className="px-2 py-1 text-xs text-neutral-600 hover:text-neutral-900"
-                      >
-                        Annuler
-                      </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                      <span className="text-xs text-rose-800 font-medium">Confirmer la suppression définitive ?</span>
+                      <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                        <button
+                          onClick={() => {
+                            deleteApplication(currentCandidateApp.id);
+                            setConfirmDeleteAppId(null);
+                          }}
+                          className="flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700"
+                        >
+                          Oui, supprimer
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteAppId(null)}
+                          className="px-3 py-1.5 text-xs text-neutral-600 hover:text-neutral-900"
+                        >
+                          Annuler
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteAppId(currentCandidateApp.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl transition-colors"
-                      title="Se désister de cette candidature"
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl hover:bg-rose-50 transition-colors"
+                      title="Supprimer la candidature"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Supprimer ma candidature</span>
@@ -395,18 +398,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Graphical Linear Progress Bar (Dossier soumis ➔ Validation structure ➔ Sélection ➔ Entretien ➔ Admis) */}
+              {/* Progress Bar: Flawless Responsive Mobile & Desktop Layout */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                    Progression linéaire du dossier
+                    Progression du dossier (ProgressBar)
                   </h3>
-                  <span className="text-xs font-medium text-neutral-500">
+                  <span className="text-xs font-medium text-neutral-600">
                     Étape actuelle : <strong className="text-neutral-900">{PROGRESS_STEPS[currentStep - 1]?.label || 'En cours'}</strong> ({currentStep}/5)
                   </span>
                 </div>
 
-                <div className="relative pt-3 pb-4">
+                {/* DESKTOP/TABLET VIEW (Horizontal timeline with connecting line) */}
+                <div className="hidden sm:block relative pt-3 pb-4">
                   {/* Background Track Line */}
                   <div className="absolute top-7 left-8 right-8 h-1 bg-neutral-100 -z-0" />
                   {/* Active Progress Fill */}
@@ -447,7 +451,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                           >
                             {s.label}
                           </span>
-                          <span className="text-[11px] text-neutral-400 hidden sm:block mt-0.5 leading-tight">
+                          <span className="text-[11px] text-neutral-400 hidden md:block mt-0.5 leading-tight">
                             {s.desc}
                           </span>
                         </div>
@@ -455,61 +459,112 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     })}
                   </div>
                 </div>
+
+                {/* MOBILE VIEW (Vertical Step-by-Step Clean Card Stack) */}
+                <div className="block sm:hidden space-y-2 pt-2">
+                  {PROGRESS_STEPS.map((s) => {
+                    const isCompleted = currentStep > s.step;
+                    const isCurrent = currentStep === s.step;
+
+                    return (
+                      <div
+                        key={s.step}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isCurrent
+                            ? 'bg-neutral-50 border-neutral-900 shadow-xs ring-1 ring-neutral-900'
+                            : isCompleted
+                            ? 'bg-white border-neutral-200'
+                            : 'bg-white border-neutral-100 opacity-60'
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            isCompleted
+                              ? 'bg-neutral-900 text-white'
+                              : isCurrent
+                              ? 'bg-neutral-900 text-white ring-2 ring-neutral-300'
+                              : 'border border-neutral-300 text-neutral-400'
+                          }`}
+                        >
+                          {isCompleted ? <Check className="w-3.5 h-3.5" /> : s.step}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-bold ${isCurrent ? 'text-neutral-900' : 'text-neutral-700'}`}>
+                              {s.label}
+                            </span>
+                            {isCurrent && (
+                              <span className="text-[10px] font-bold text-neutral-900 bg-white border border-neutral-300 px-1.5 py-0.5 rounded-md">
+                                En cours
+                              </span>
+                            )}
+                            {isCompleted && (
+                              <span className="text-[10px] font-medium text-emerald-700">
+                                Validé
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-neutral-500 truncate">{s.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Status Note or Next Action */}
-              <div className="p-4 bg-neutral-50 border border-neutral-100 rounded-xl space-y-1">
-                <div className="text-xs font-semibold text-neutral-800 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Détail d'instruction :</span>
+              <div className="p-3.5 sm:p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1">
+                <div className="text-xs font-bold text-neutral-900 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Détail et observations de la commission :</span>
                 </div>
                 <p className="text-xs text-neutral-600 leading-relaxed pl-6">
-                  {currentCandidateApp.notes || 'Votre dossier est en cours de traitement par les instances du Centre d’Études Doctorales.'}
+                  {currentCandidateApp.notes || 'Votre dossier est en cours d’examen institutionnel par la commission doctorale.'}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="p-12 text-center border border-dashed border-neutral-200 rounded-2xl bg-white space-y-4">
+            <div className="p-8 sm:p-12 text-center border border-dashed border-neutral-200 rounded-2xl bg-white space-y-4">
               <p className="text-sm text-neutral-600">
                 Vous n'avez aucune candidature de thèse active pour le moment.
               </p>
               <button
                 onClick={() => setActiveTab('catalogue')}
-                className="px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
+                className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
               >
-                Consulter les sujets et postuler
+                Parcourir les sujets disponibles
               </button>
             </div>
           )}
 
-          {/* Suivi de la Réinscription Annuelle */}
-          <div className="p-6 border border-neutral-200 rounded-2xl bg-white space-y-4 shadow-xs">
+          {/* Section: Réinscription Annuelle */}
+          <div className="p-4 sm:p-6 border border-neutral-200 rounded-2xl bg-white space-y-4 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-neutral-900">
                   Réinscription Annuelle en Doctorat
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Obligatoire au début de chaque année universitaire avec dépôt du rapport d'activité annuel.
+                  Déposez votre rapport d'activité annuel pour renouveler votre inscription auprès du CED.
                 </p>
               </div>
 
               <button
                 onClick={onOpenReReg}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors self-start sm:self-auto"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Se réinscrire (Déposer rapport)</span>
+                <span>Déposer réinscription (Rapport)</span>
               </button>
             </div>
 
             {currentCandidateReReg ? (
-              <div className="p-4 border border-neutral-100 bg-neutral-50 rounded-xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-neutral-900">
+              <div className="p-4 border border-neutral-200 bg-neutral-50 rounded-xl space-y-2 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <span className="font-bold text-neutral-900">
                     Demande de réinscription en {currentCandidateReReg.year}ème année
                   </span>
-                  <span className="text-emerald-700 font-medium">
+                  <span className="text-emerald-700 font-semibold">
                     {currentCandidateReReg.status === 'valide_structure'
                       ? 'Validée par la structure'
                       : currentCandidateReReg.status === 'valide_encadrant'
@@ -517,13 +572,15 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       : 'En cours d’examen'}
                   </span>
                 </div>
-                <p className="text-neutral-600">
+                <p className="text-neutral-600 leading-relaxed">
                   {currentCandidateReReg.activityReport.summary}
                 </p>
-                <div className="flex items-center gap-4 text-neutral-500 pt-1 border-t border-neutral-200/60">
-                  <span>Publications : <strong>{currentCandidateReReg.activityReport.publicationsCount}</strong></span>
-                  <span>Communications : <strong>{currentCandidateReReg.activityReport.communicationsCount}</strong></span>
-                  <span>Avancement : <strong>{currentCandidateReReg.activityReport.progressPercentage}%</strong></span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-neutral-200 text-neutral-500">
+                  <div className="flex items-center gap-3">
+                    <span>Publications : <strong className="text-neutral-900">{currentCandidateReReg.activityReport.publicationsCount}</strong></span>
+                    <span>·</span>
+                    <span>Avancement : <strong className="text-neutral-900">{currentCandidateReReg.activityReport.progressPercentage}%</strong></span>
+                  </div>
                   <button
                     onClick={() =>
                       openAttachment({
@@ -534,9 +591,9 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         date: currentCandidateReReg.submittedDate,
                       })
                     }
-                    className="ml-auto text-neutral-900 underline font-medium"
+                    className="text-neutral-900 underline font-semibold text-left sm:text-right"
                   >
-                    Voir le document
+                    Voir le document PDF
                   </button>
                 </div>
               </div>
@@ -549,7 +606,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* TAB 3: GESTION DES DOCUMENTS (SCANS / DÉPÔTS) */}
+      {/* TAB 3: GESTION ET SCAN DES DOCUMENTS */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
           <div className="space-y-1">
@@ -557,7 +614,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               Pièces justificatives obligatoires (Scans & Dépôts)
             </h2>
             <p className="text-xs text-neutral-500">
-              Téléversez vos documents au format PDF ou image haute définition. Ces pièces sont examinées par la structure et le jury de sélection.
+              Téléversez ou scannez vos pièces au format PDF ou image (max 10 Mo par document).
             </p>
           </div>
 
@@ -571,7 +628,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               return (
                 <div
                   key={req.type}
-                  className="p-5 border border-neutral-200 rounded-2xl bg-white space-y-4 hover:border-neutral-300 transition-colors"
+                  className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white space-y-4 hover:border-neutral-300 transition-colors shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -588,19 +645,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   </div>
 
                   {uploadedDoc ? (
-                    <div className="p-3 bg-neutral-50 border border-neutral-100 rounded-xl space-y-2">
+                    <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-neutral-900 font-medium truncate max-w-[200px]">
+                        <span className="font-mono text-neutral-900 font-medium truncate max-w-[180px] sm:max-w-[220px]">
                           {uploadedDoc.fileName}
                         </span>
-                        <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                        <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 shrink-0">
                           <Check className="w-3 h-3" />
                           <span>Déposé ({uploadedDoc.fileSize})</span>
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500 border-t border-neutral-200/50">
-                        <span>Horodaté le {uploadedDoc.uploadedAt}</span>
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500 border-t border-neutral-200">
+                        <span>{uploadedDoc.uploadedAt}</span>
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() =>
@@ -612,14 +669,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                                 date: uploadedDoc.uploadedAt,
                               })
                             }
-                            className="text-neutral-900 font-medium underline"
+                            className="text-neutral-900 font-semibold underline"
                           >
                             Prévisualiser
                           </button>
                           <span>·</span>
                           <button
                             onClick={() => deleteCandidateDocument(uploadedDoc.id)}
-                            className="text-rose-600 hover:text-rose-700"
+                            className="text-rose-600 hover:text-rose-700 font-medium"
                           >
                             Remplacer
                           </button>
@@ -628,13 +685,13 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     </div>
                   ) : (
                     <div className="relative">
-                      <label className="flex flex-col items-center justify-center p-4 border border-dashed border-neutral-200 rounded-xl bg-white hover:bg-neutral-50 transition-colors cursor-pointer group">
+                      <label className="flex flex-col items-center justify-center p-4 border border-dashed border-neutral-300 rounded-xl bg-white hover:bg-neutral-50 transition-colors cursor-pointer group">
                         <Upload className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
                         <span className="text-xs font-semibold text-neutral-800 mt-2">
                           Importer ou scanner la pièce
                         </span>
                         <span className="text-[10px] text-neutral-400 mt-0.5">
-                          PDF ou image haute résolution (max 10 Mo)
+                          PDF ou image haute résolution
                         </span>
                         <input
                           type="file"

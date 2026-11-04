@@ -30,11 +30,11 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-      <div className="w-full max-w-lg bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
+      <div className="w-full max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-neutral-900">
+        <div className="sticky top-0 bg-white px-5 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between z-10">
+          <h2 className="text-sm font-bold text-neutral-900">
             Postuler au sujet de thèse
           </h2>
           <button

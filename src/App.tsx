@@ -84,16 +84,16 @@ const MainLayout: React.FC = () => {
                     <p className="text-xs text-neutral-600 leading-relaxed max-w-xl mx-auto">
                       Consultez les sujets de recherche doctorale ou connectez-vous avec votre adresse institutionnelle pour gérer vos candidatures, dépôts de pièces et validations.
                     </p>
-                    <div className="pt-2 flex items-center justify-center gap-3">
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full max-w-md mx-auto">
                       <button
                         onClick={() => setIsLoginOpen(true)}
-                        className="px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
                       >
-                        Connexion avec email institutionnel
+                        Connexion email institutionnel
                       </button>
                       <button
                         onClick={() => setCurrentView('register_candidat')}
-                        className="px-4 py-2 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
                       >
                         Inscription initiale candidat
                       </button>

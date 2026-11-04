@@ -55,10 +55,10 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-      <div className="w-full max-w-lg bg-white border border-neutral-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-neutral-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
+      <div className="w-full max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="sticky top-0 bg-white px-5 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between z-10">
+          <h2 className="text-sm font-bold text-neutral-900">
             Modifier le sujet de thèse
           </h2>
           <button
@@ -69,7 +69,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-neutral-800">
               Titre du sujet de thèse *
@@ -83,7 +83,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-neutral-800">
                 Établissement
@@ -138,7 +138,7 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-neutral-800">
                 Places offertes
@@ -169,17 +169,17 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-100">
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-3 pt-3 border-t border-neutral-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-neutral-600 hover:text-neutral-900"
+              className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-neutral-600 hover:text-neutral-900 order-2 sm:order-1"
             >
               Annuler
             </button>
             <button
               type="submit"
-              className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors order-1 sm:order-2 shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Enregistrer les modifications</span>

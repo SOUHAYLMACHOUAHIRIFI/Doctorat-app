@@ -72,16 +72,26 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   }, [topics, searchQuery, selectedEstablishment]);
 
   // Exact 5 progression steps according to requirements:
-  // 1. Inscription Dossier ➔ 2. Vérification Pièces ➔ 3. Evaluation Directeur Thèse ➔ 4. Validation Structure ➔ 5. Admission Finale
+  // Dossier déposé ➔ Scan validé ➔ Évaluation Directeur ➔ Validation Structure ➔ Décision finale
   const PROGRESS_STEPS: { step: ApplicationStep; label: string; desc: string }[] = [
-    { step: 1, label: '1. Inscription Dossier', desc: 'Dépôt du profil et du sujet' },
-    { step: 2, label: '2. Vérification Pièces', desc: 'Conformité des 4 scans' },
-    { step: 3, label: '3. Evaluation Directeur', desc: 'Avis motivé du directeur de thèse' },
+    { step: 1, label: '1. Dossier déposé', desc: 'Sujet et informations enregistrés' },
+    { step: 2, label: '2. Scan validé', desc: '4 pièces numérisées et certifiées' },
+    { step: 3, label: '3. Évaluation Directeur', desc: 'Avis motivé du directeur de thèse' },
     { step: 4, label: '4. Validation Structure', desc: 'Approbation du conseil du CED' },
-    { step: 5, label: '5. Admission Finale', desc: 'Inscription doctorale validée' },
+    { step: 5, label: '5. Décision finale', desc: 'Inscription doctorale validée' },
   ];
 
-  const currentStep: number = currentCandidateApp?.currentStep || 0;
+  // Dynamic step computation based on candidate documents and approvals
+  const candidateDocsCount = documents.filter(
+    (d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()
+  ).length;
+
+  let currentStep: number = currentCandidateApp?.currentStep || 0;
+  if (currentCandidateApp) {
+    if (currentCandidateApp.currentStep === 1 && candidateDocsCount >= 4) {
+      currentStep = 2; // Scan validé
+    }
+  }
 
   // Documents mandatory types
   const REQUIRED_DOCS: { type: DocumentType; label: string; description: string; icon: any }[] = [
@@ -570,12 +580,46 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               )}
 
-              {/* Summary Table / Card */}
+              {/* Summary Table / Mobile Card */}
               <div className="space-y-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-neutral-700">
                   Fiche synthétique du dossier
                 </div>
-                <div className="overflow-x-auto border border-neutral-200 rounded-xl bg-white shadow-xs">
+
+                {/* Mobile Card View (< sm) */}
+                <div className="block sm:hidden border border-neutral-200 rounded-xl bg-white p-4 space-y-3 shadow-xs">
+                  <div>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Intitulé Thèse</span>
+                    <h4 className="text-xs font-bold text-neutral-900 mt-0.5">{currentCandidateApp.topicTitle}</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 text-xs">
+                    <div>
+                      <span className="text-[10px] text-neutral-400 block">Établissement</span>
+                      <span className="font-medium text-neutral-800">{currentCandidateApp.establishment}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-neutral-400 block">Laboratoire</span>
+                      <span className="font-medium text-neutral-800">{currentCandidateApp.laboratory}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-neutral-400 block">Directeur</span>
+                      <span className="font-medium text-neutral-800">{currentCandidateApp.supervisorName}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-neutral-400 block">Progression</span>
+                      <span className="font-semibold text-neutral-900">Étape {currentCandidateApp.currentStep}/5</span>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+                    <span className="text-[10px] text-neutral-400">Statut de la candidature :</span>
+                    <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 capitalize">
+                      {currentCandidateApp.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Desktop Table (>= sm) */}
+                <div className="hidden sm:block overflow-x-auto border border-neutral-200 rounded-xl bg-white shadow-xs">
                   <table className="w-full text-left text-xs min-w-[580px]">
                     <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 font-semibold uppercase tracking-wider text-[10px]">
                       <tr>
@@ -731,51 +775,87 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     </div>
 
                     {uploadedDoc && (
-                      <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-mono text-neutral-900 font-medium truncate max-w-[180px] sm:max-w-[220px]">
-                            {uploadedDoc.fileName}
-                          </span>
-                          <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 shrink-0">
-                            <Check className="w-3 h-3" />
-                            <span>Déposé ({uploadedDoc.fileSize})</span>
-                          </span>
-                        </div>
-
-                        {uploadedDoc.captureMethod === 'camera' && (
-                          <div className="text-[10px] text-neutral-500 flex items-center gap-1">
-                            <Camera className="w-3 h-3 text-neutral-400" />
-                            <span>Numérisé via caméra directe</span>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500 border-t border-neutral-200">
-                          <span>{uploadedDoc.uploadedAt}</span>
-                          <div className="flex items-center gap-2">
-                            <button
+                      <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          {/* Miniature Thumbnail */}
+                          {uploadedDoc.dataUrl && uploadedDoc.dataUrl.startsWith('data:image/') ? (
+                            <img
+                              src={uploadedDoc.dataUrl}
+                              alt={uploadedDoc.title}
                               onClick={() =>
                                 openAttachment({
                                   title: uploadedDoc.title,
-                                  subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
-                                  content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                  subtitle: `Scan certifié — ${uploadedDoc.fileName}`,
+                                  content: `Scan haute définition certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nNumérisé le : ${uploadedDoc.uploadedAt}`,
                                   author: currentUser?.name || 'Candidat',
                                   date: uploadedDoc.uploadedAt,
                                   dataUrl: uploadedDoc.dataUrl,
                                 })
                               }
-                              className="text-neutral-900 font-semibold underline flex items-center gap-1"
-                            >
-                              <span>Voir le scan</span>
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </button>
-                            <span>·</span>
-                            <button
-                              onClick={() => deleteCandidateDocument(uploadedDoc.id)}
-                              className="text-rose-600 hover:text-rose-700 font-medium"
-                            >
-                              Supprimer
-                            </button>
+                              className="w-12 h-12 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
+                              <span>PDF</span>
+                              <span className="text-[8px] text-neutral-500 font-sans">SCAN</span>
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-mono text-neutral-900 font-bold truncate max-w-[150px] sm:max-w-[200px]">
+                                {uploadedDoc.fileName}
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
+                                <Check className="w-3 h-3" />
+                                <span>{uploadedDoc.fileSize}</span>
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1">
+                              {uploadedDoc.captureMethod === 'camera' ? (
+                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
+                                  <Camera className="w-3 h-3 text-neutral-500" />
+                                  <span>Numérisé par caméra</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
+                                  <Upload className="w-3 h-3 text-neutral-500" />
+                                  <span>Importé par fichier</span>
+                                </span>
+                              )}
+                              <span>·</span>
+                              <span>{uploadedDoc.uploadedAt}</span>
+                            </div>
                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-600 border-t border-neutral-200">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openAttachment({
+                                title: uploadedDoc.title,
+                                subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
+                                content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                author: currentUser?.name || 'Candidat',
+                                date: uploadedDoc.uploadedAt,
+                                dataUrl: uploadedDoc.dataUrl,
+                              })
+                            }
+                            className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
+                          >
+                            <span>Voir le scan complet</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => deleteCandidateDocument(uploadedDoc.id)}
+                            className="text-rose-600 hover:text-rose-700 font-medium text-xs"
+                          >
+                            Supprimer
+                          </button>
                         </div>
                       </div>
                     )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CandidateApplication, CandidateDocument } from '../types';
 import { useApp } from '../context/AppContext';
-import { X, Check, AlertCircle, FileText, ExternalLink, User, Phone, Mail, IdCard, GraduationCap, Building2, Award } from 'lucide-react';
+import { X, Check, AlertCircle, FileText, ExternalLink, User, Phone, Mail, IdCard, GraduationCap, Building2, Award, Eye, Image as ImageIcon } from 'lucide-react';
 
 interface ApplicantReviewModalProps {
   application: CandidateApplication | null;
@@ -15,7 +15,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
   const { documents, evaluateApplicationSupervisor, openAttachment } = useApp();
 
   const [decision, setDecision] = useState<'favorable' | 'defavorable' | 'a_corriger'>('favorable');
-  const [grade, setGrade] = useState(application?.supervisorGrade || '17/20');
+  const [grade, setGrade] = useState(application?.supervisorGrade || '18/20');
   const [feedback, setFeedback] = useState(application?.supervisorFeedback || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +51,17 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     );
     setIsSubmitting(false);
     onClose();
+  };
+
+  const handleOpenDocument = (doc: CandidateDocument) => {
+    openAttachment({
+      title: doc.title,
+      subtitle: `Document numérique vérifié — ${application.candidateName}`,
+      content: `Fichier : ${doc.fileName}\nDate de dépôt : ${doc.uploadedAt}\nCandidat : ${application.candidateName} (CIN : ${application.candidateCin || 'CD654321'})\nÉtablissement : ${application.establishment}\n\nDocument numérique certifié conforme aux exigences académiques du CED USMBA.`,
+      author: application.candidateName,
+      date: doc.uploadedAt,
+      dataUrl: doc.dataUrl,
+    });
   };
 
   return (
@@ -121,14 +132,20 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
             </div>
           </div>
 
-          {/* Scanned Documents Inspection Grid (4/4 mandatory pieces) */}
+          {/* DEDICATED SECTION: Pièces justificatives scannées */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800">
-                Pièces Justificatives Numérisées ({candidateDocs.length} / 4)
-              </h3>
-              <span className="text-[11px] text-neutral-500">
-                Cliquez sur « Consulter » pour ouvrir le document
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-neutral-700" />
+                  <span>Pièces justificatives scannées</span>
+                </h3>
+                <p className="text-[11px] text-neutral-500 mt-0.5">
+                  Cliquez sur n’importe quelle pièce pour ouvrir la prévisualisation pleine page
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-neutral-700 bg-neutral-100 px-2.5 py-1 rounded-md border border-neutral-200">
+                {candidateDocs.length} / 4 pièces disponibles
               </span>
             </div>
 
@@ -139,23 +156,34 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
                 return (
                   <div
                     key={dt.type}
-                    className={`p-3.5 rounded-xl border transition-all ${
+                    onClick={() => doc && handleOpenDocument(doc)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       doc
-                        ? 'bg-white border-neutral-200 shadow-xs'
-                        : 'bg-neutral-50 border-dashed border-neutral-200 opacity-60'
+                        ? 'bg-white border-neutral-200 hover:border-neutral-900 shadow-xs hover:shadow-md'
+                        : 'bg-neutral-50 border-dashed border-neutral-200 opacity-60 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 shrink-0">
-                          <FileText className="w-4 h-4" />
-                        </div>
+                        {/* Thumbnail or File icon */}
+                        {doc?.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
+                          <img
+                            src={doc.dataUrl}
+                            alt={doc.title}
+                            className="w-9 h-9 object-cover rounded-lg border border-neutral-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                        )}
+
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-neutral-900 truncate">
                             {dt.label}
                           </div>
                           <div className="text-[11px] text-neutral-500 truncate font-mono">
-                            {doc ? doc.fileName : 'Non encore joint'}
+                            {doc ? doc.fileName : 'Pièce manquante'}
                           </div>
                         </div>
                       </div>
@@ -172,27 +200,15 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
                         <span className="text-[10px] text-neutral-400">
                           {doc.uploadedAt} · {doc.captureMethod === 'camera' ? 'Scan Caméra' : 'Import'}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openAttachment({
-                              title: doc.title,
-                              subtitle: `Document numérique vérifié — ${application.candidateName}`,
-                              content: `Fichier : ${doc.fileName}\nDate de dépôt : ${doc.uploadedAt}\nCandidat : ${application.candidateName} (CIN : ${application.candidateCin || 'CD654321'})\nÉtablissement : ${application.establishment}\n\nDocument numérique conforme aux exigences académiques du CED USMBA.`,
-                              author: application.candidateName,
-                              date: doc.uploadedAt,
-                              dataUrl: doc.dataUrl,
-                            });
-                          }}
-                          className="font-bold text-neutral-900 underline hover:text-neutral-700 flex items-center gap-1"
-                        >
-                          <span>Consulter</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
+                        <span className="font-bold text-neutral-900 underline hover:text-neutral-700 flex items-center gap-1 text-[11px]">
+                          <Eye className="w-3 h-3" />
+                          <span>Prévisualiser pleine page</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </span>
                       </div>
                     ) : (
                       <div className="mt-2 text-[10px] text-rose-600 italic">
-                        Document manquant dans la candidature
+                        Document manquant dans le dossier
                       </div>
                     )}
                   </div>
@@ -202,10 +218,10 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
           </div>
 
           {/* Supervisor Decision Area */}
-          <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-2xl space-y-4">
+          <div className="p-4 sm:p-5 bg-neutral-50 border border-neutral-200 rounded-2xl space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-2">
               <Award className="w-3.5 h-3.5 text-neutral-800" />
-              <span>Avis et Délibération du Directeur de Thèse</span>
+              <span>Avis et Délibération Pédagogique du Directeur de Thèse</span>
             </h3>
 
             {/* Decision selector */}
@@ -295,7 +311,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-xs font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-xl transition-colors text-center"
           >
-            Fermer sans enregistrer
+            Fermer
           </button>
 
           <button

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ThesisTopic, DocumentType, CandidateDocument } from '../types';
 import { useApp } from '../context/AppContext';
-import { X, Check, Building2, User, Phone, IdCard, GraduationCap, Mail, FileText, Camera, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Check, Building2, User, Phone, IdCard, GraduationCap, Mail, FileText, Camera, Upload, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
 import { DocumentScannerModal } from './DocumentScannerModal';
 
 interface ApplyModalProps {
@@ -10,7 +10,7 @@ interface ApplyModalProps {
 }
 
 export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
-  const { addApplication, currentUser, documents, uploadCandidateDocument } = useApp();
+  const { addApplication, currentUser, documents, uploadCandidateDocument, openAttachment } = useApp();
 
   const initialFirstName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || '';
   const initialLastName = currentUser?.lastName || currentUser?.name?.split(' ').slice(1).join(' ') || '';
@@ -41,10 +41,10 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   );
 
   const REQUIRED_DOC_TYPES: { type: DocumentType; label: string; desc: string }[] = [
-    { type: 'baccalaureat', label: 'Baccalauréat', desc: 'Diplôme du Baccalauréat certifié' },
-    { type: 'releve_notes', label: 'Relevés de notes', desc: 'Relevés de notes de Licence et Master' },
-    { type: 'diplomes', label: 'Diplômes universitaires', desc: 'Attestations & Diplômes (Licence/Master/Ingénieur)' },
-    { type: 'cin', label: 'Carte d’Identité (CIN)', desc: 'Scan recto/verso net de la CIN' },
+    { type: 'baccalaureat', label: '1. Baccalauréat', desc: 'Diplôme certifié conforme' },
+    { type: 'releve_notes', label: '2. Relevés de notes', desc: 'Relevés officiels Licence & Master' },
+    { type: 'diplomes', label: '3. Diplômes universitaires', desc: 'Attestations & Diplômes' },
+    { type: 'cin', label: '4. Carte d’Identité (CIN)', desc: 'Scan recto/verso net de la CIN' },
   ];
 
   const handleOpenScanner = (type: DocumentType, label: string) => {
@@ -110,7 +110,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
       );
       setIsSubmitting(false);
       onClose();
-    }, 300);
+    }, 250);
   };
 
   return (
@@ -292,12 +292,12 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
               </div>
             </div>
 
-            {/* 3. Dépôt obligatoire des 4 Pièces Justificatives */}
+            {/* 3. Dépôt obligatoire des 4 Pièces Justificatives AVEC MINIATURES */}
             <div className="space-y-3 pt-3 border-t border-neutral-100">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-neutral-800" />
-                  <span>3. Pièces Justificatives Obligatoires (4/4 requises)</span>
+                  <span>3. Pièces Justificatives Scannées (4/4 requises)</span>
                 </h4>
                 <span className="text-[11px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
                   {candidateDocs.length} / 4 fournies
@@ -311,9 +311,9 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                   return (
                     <div
                       key={rd.type}
-                      className={`p-3 rounded-xl border transition-all ${
+                      className={`p-3.5 rounded-xl border transition-all ${
                         doc
-                          ? 'bg-neutral-50 border-neutral-200'
+                          ? 'bg-neutral-50 border-neutral-200 shadow-xs'
                           : 'bg-white border-dashed border-rose-200 hover:border-neutral-900'
                       }`}
                     >
@@ -336,19 +336,56 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                       </div>
 
                       {doc ? (
-                        <div className="mt-2 pt-2 border-t border-neutral-200 flex items-center justify-between text-[11px] text-neutral-600 font-mono">
-                          <span className="truncate max-w-[160px]">{doc.fileName}</span>
-                          <span className="text-neutral-400">{doc.fileSize}</span>
+                        /* Document Miniature Preview */
+                        <div className="mt-3 pt-2.5 border-t border-neutral-200 flex items-center gap-2.5">
+                          {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
+                            <img
+                              src={doc.dataUrl}
+                              alt={doc.title}
+                              className="w-10 h-10 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90"
+                              onClick={() =>
+                                openAttachment({
+                                  title: doc.title,
+                                  subtitle: `Aperçu document — ${doc.fileName}`,
+                                  content: `Scan haute définition certifié conforme pour le candidat ${nom} ${prenom} (CIN: ${cin}).\n\nTaille : ${doc.fileSize}\nNumérisé le : ${doc.uploadedAt}`,
+                                  author: `${prenom} ${nom}`,
+                                  date: doc.uploadedAt,
+                                  dataUrl: doc.dataUrl,
+                                })
+                              }
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0">
+                              PDF
+                            </div>
+                          )}
+
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-mono font-bold text-neutral-900 truncate">
+                              {doc.fileName}
+                            </div>
+                            <div className="text-[10px] text-neutral-500">
+                              {doc.fileSize} · {doc.captureMethod === 'camera' ? 'Caméra' : 'Import'}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenScanner(rd.type, rd.label)}
+                            className="text-[11px] font-semibold text-neutral-800 hover:text-neutral-900 underline shrink-0"
+                          >
+                            Remplacer
+                          </button>
                         </div>
                       ) : (
                         <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleOpenScanner(rd.type, rd.label)}
-                            className="flex-1 py-1.5 px-2 bg-neutral-900 text-white rounded-lg text-[11px] font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1 shadow-xs"
+                            className="flex-1 py-1.5 px-2 bg-neutral-900 text-white rounded-lg text-[11px] font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                           >
                             <Camera className="w-3 h-3" />
-                            <span>Scanner / Téléverser</span>
+                            <span>Scanner / Importer</span>
                           </button>
                         </div>
                       )}
@@ -358,7 +395,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
               </div>
             </div>
 
-            {/* 4. Note de motivation succincte */}
+            {/* 4. Note de motivation */}
             <div className="space-y-1.5 pt-3 border-t border-neutral-100">
               <label className="text-xs font-semibold text-neutral-800">
                 4. Note de motivation / adéquation scientifique (Optionnel)

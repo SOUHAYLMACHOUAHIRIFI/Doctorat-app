@@ -12,6 +12,7 @@ export const StructureDirectorView: React.FC = () => {
     approveTopicStructure,
     rejectTopicStructure,
     updateApplicationProgress,
+    validateApplicationStructure,
     currentUser,
     documents,
   } = useApp();
@@ -418,22 +419,20 @@ export const StructureDirectorView: React.FC = () => {
                       {app.currentStep < 5 ? (
                         <button
                           onClick={() => {
-                            const nextStep = (app.currentStep + 1) as ApplicationStep;
-                            updateApplicationProgress(
+                            validateApplicationStructure(
                               app.id,
-                              nextStep,
-                              nextStep === 5 ? 'admis' : 'validation_structure',
-                              `Validation officielle structure accordée par le CED.`
+                              'valide',
+                              'Validation finale accordée par le Centre d’Études Doctorales (CED USMBA).'
                             );
                           }}
                           className="flex-1 py-2 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 rounded-xl transition-colors flex items-center justify-center gap-1 shadow-xs"
                         >
                           <Check className="w-3.5 h-3.5" />
-                          <span>Valider ({app.currentStep + 1}/5)</span>
+                          <span>Valider l'Admission Finale (5/5)</span>
                         </button>
                       ) : (
                         <span className="px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
-                          Admis
+                          Admis définitif
                         </span>
                       )}
                     </div>
@@ -494,18 +493,16 @@ export const StructureDirectorView: React.FC = () => {
                             {app.currentStep < 5 ? (
                               <button
                                 onClick={() => {
-                                  const nextStep = (app.currentStep + 1) as ApplicationStep;
-                                  updateApplicationProgress(
+                                  validateApplicationStructure(
                                     app.id,
-                                    nextStep,
-                                    nextStep === 5 ? 'admis' : 'validation_structure',
-                                    'Approbation finale validée par le Centre d’Études Doctorales.'
+                                    'valide',
+                                    'Validation finale accordée par le Centre d’Études Doctorales (CED USMBA).'
                                   );
                                 }}
                                 className="px-3.5 py-1.5 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 rounded-xl transition-colors inline-flex items-center gap-1 shadow-xs"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                                <span>Valider étape {app.currentStep + 1}</span>
+                                <span>Valider l'Admission Finale (5/5)</span>
                               </button>
                             ) : (
                               <span className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl inline-flex items-center gap-1">

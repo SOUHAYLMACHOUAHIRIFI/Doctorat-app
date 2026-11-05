@@ -82,11 +82,11 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
     }
 
     const labels: Record<number, string> = {
-      1: '1/5 Dossier soumis',
-      2: '2/5 Pièces validées',
-      3: '3/5 Avis Directeur',
+      1: '1/5 Inscription Dossier',
+      2: '2/5 Vérification Pièces',
+      3: '3/5 Evaluation Directeur',
       4: '4/5 Validation Structure',
-      5: '5/5 Admis',
+      5: '5/5 Admission Finale',
     };
 
     return (

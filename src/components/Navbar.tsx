@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Role } from '../types';
-import { LogIn, LogOut, GraduationCap, UserCheck, Shield, UserPlus, Menu, X, BookOpen } from 'lucide-react';
+import { LogIn, LogOut, GraduationCap, UserCheck, Shield, UserPlus, Menu, X, BookOpen, User, ChevronDown } from 'lucide-react';
 
 interface NavbarProps {
   onOpenLogin: () => void;
@@ -9,34 +9,51 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) => {
-  const { currentUser, role, logout, currentView, setCurrentView, switchRole } = useApp();
+  const { currentUser, role, logout, currentView, setCurrentView } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
-  const getRoleBadge = (r: Role) => {
+  const getRoleDetails = (r?: Role | null) => {
     switch (r) {
       case 'candidat':
-      case 'candidate':
-        return { label: 'Candidat / Doctorant', shortLabel: 'Candidat', icon: <GraduationCap className="w-4 h-4 text-neutral-800" /> };
+        return {
+          label: 'Espace Candidat',
+          badge: 'Candidat / Doctorant',
+          icon: <GraduationCap className="w-4 h-4 text-neutral-800" />,
+        };
       case 'directeur_these':
-      case 'supervisor':
-        return { label: 'Directeur de Thèse', shortLabel: 'Dir. Thèse', icon: <UserCheck className="w-4 h-4 text-neutral-800" /> };
+        return {
+          label: 'Espace Directeur de Thèse',
+          badge: 'Directeur de Thèse',
+          icon: <UserCheck className="w-4 h-4 text-neutral-800" />,
+        };
       case 'directeur_structure':
-      case 'structure_director':
-        return { label: 'Directeur de Structure (Admin)', shortLabel: 'Structure Admin', icon: <Shield className="w-4 h-4 text-neutral-800" /> };
+        return {
+          label: 'Espace Direction de Structure',
+          badge: 'Direction CED / Structure',
+          icon: <Shield className="w-4 h-4 text-neutral-800" />,
+        };
       default:
-        return { label: 'Utilisateur', shortLabel: 'Compte', icon: <GraduationCap className="w-4 h-4 text-neutral-800" /> };
+        return {
+          label: 'Catalogue Public',
+          badge: 'Visiteur',
+          icon: <BookOpen className="w-4 h-4 text-neutral-800" />,
+        };
     }
   };
 
-  const handleNavClick = (view: 'dashboard' | 'register_candidat') => {
+  const handleNavClick = (view: 'dashboard' | 'register_candidat' | 'catalogue') => {
     setCurrentView(view);
     setMobileMenuOpen(false);
+    setProfileDropdownOpen(false);
   };
+
+  const roleInfo = getRoleDetails(role);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white/95 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Zone 1: Wordmark */}
+        {/* Brand / Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => handleNavClick('dashboard')}
@@ -56,98 +73,116 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
           </button>
         </div>
 
-        {/* Zone 2: Desktop Role Switcher & Nav Links */}
-        <nav className="hidden md:flex items-center gap-3">
-          {currentUser && (
-            <div className="flex items-center p-1 bg-neutral-100 rounded-xl border border-neutral-200">
+        {/* Center: Contextual Navigation Links according to logged-in user */}
+        <nav className="hidden md:flex items-center gap-2">
+          {currentUser ? (
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-50 border border-neutral-200 rounded-xl">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-800">
+                {roleInfo.icon}
+                <span>{roleInfo.label}</span>
+              </span>
+              <span className="text-neutral-300">·</span>
+              <span className="text-[11px] text-neutral-500 font-medium">
+                {currentUser.establishment || 'FST Fès'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => {
-                  switchRole('candidat');
-                  handleNavClick('dashboard');
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                  role === 'candidat' || role === 'candidate'
-                    ? 'bg-white text-neutral-900 shadow-xs'
-                    : 'text-neutral-500 hover:text-neutral-900'
+                onClick={() => handleNavClick('dashboard')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
+                  currentView === 'dashboard'
+                    ? 'bg-neutral-100 text-neutral-900'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
               >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Candidat</span>
+                Catalogue des Sujets
               </button>
+
               <button
-                onClick={() => {
-                  switchRole('directeur_these');
-                  handleNavClick('dashboard');
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                  role === 'directeur_these' || role === 'supervisor'
-                    ? 'bg-white text-neutral-900 shadow-xs'
-                    : 'text-neutral-500 hover:text-neutral-900'
+                onClick={() => handleNavClick('register_candidat')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
+                  currentView === 'register_candidat'
+                    ? 'bg-neutral-900 text-white'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
               >
-                <UserCheck className="w-3.5 h-3.5" />
-                <span>Directeur Thèse</span>
-              </button>
-              <button
-                onClick={() => {
-                  switchRole('directeur_structure');
-                  handleNavClick('dashboard');
-                }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                  role === 'directeur_structure' || role === 'structure_director'
-                    ? 'bg-white text-neutral-900 shadow-xs'
-                    : 'text-neutral-500 hover:text-neutral-900'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Directeur Structure</span>
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Inscription Candidat</span>
               </button>
             </div>
           )}
-
-          <button
-            onClick={() => handleNavClick('register_candidat')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-              currentView === 'register_candidat'
-                ? 'bg-neutral-100 text-neutral-900'
-                : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-            }`}
-          >
-            <UserPlus className="w-3.5 h-3.5 text-neutral-500" />
-            <span>Inscription Candidat</span>
-          </button>
         </nav>
 
-        {/* Zone 3: Desktop Account Status & Actions */}
+        {/* Desktop User Account & Profile Menu */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
           {currentUser ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-xs font-bold text-neutral-900 leading-tight">
-                  {currentUser.name}
-                </div>
-                <div className="text-[10px] text-neutral-500 font-mono">
-                  {currentUser.email}
-                </div>
-              </div>
-
+            <div className="relative">
               <button
-                onClick={logout}
-                title="Se déconnecter"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:text-rose-600 border border-neutral-200 rounded-xl hover:bg-rose-50 hover:border-rose-200 transition-colors"
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center gap-2.5 p-1.5 pl-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors focus:outline-hidden"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Déconnexion</span>
+                <div className="text-right">
+                  <div className="text-xs font-bold text-neutral-900 leading-tight">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] text-neutral-500 font-mono truncate max-w-[170px]">
+                    {currentUser.email}
+                  </div>
+                </div>
+
+                <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xs">
+                  {currentUser.firstName?.charAt(0) || currentUser.name.charAt(0)}
+                </div>
+
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
               </button>
+
+              {/* Profile dropdown */}
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-neutral-200 rounded-2xl shadow-xl p-3 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="p-2.5 bg-neutral-50 rounded-xl space-y-1 text-xs border border-neutral-100">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                      Compte actif
+                    </div>
+                    <div className="font-bold text-neutral-900">{currentUser.name}</div>
+                    <div className="text-[11px] text-neutral-500 font-mono truncate">{currentUser.email}</div>
+                    <div className="pt-1 flex items-center gap-1.5 text-[11px] text-neutral-700 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>{roleInfo.badge}</span>
+                    </div>
+                    {currentUser.cin && (
+                      <div className="text-[10px] text-neutral-500 font-mono">
+                        CIN : {currentUser.cin}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-1 border-t border-neutral-100">
+                    <button
+                      onClick={() => {
+                        logout();
+                        setProfileDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Se déconnecter</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <button
-              onClick={onOpenLogin}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Connexion Email Institutionnel</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenLogin}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Connexion (@usmba.ac.ma)</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -173,11 +208,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-neutral-200 bg-white px-4 py-4 space-y-4 shadow-lg animate-in slide-in-from-top-2 duration-150">
           {currentUser ? (
-            <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1 text-xs">
+            <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-neutral-900 text-sm">{currentUser.name}</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 bg-white border border-neutral-200 rounded-md text-neutral-800">
-                  {getRoleBadge(currentUser.role).shortLabel}
+                  {roleInfo.badge}
                 </span>
               </div>
               <div className="text-[11px] text-neutral-500 font-mono truncate">
@@ -188,59 +223,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
                   CIN : {currentUser.cin}
                 </div>
               )}
-
-              {/* Mobile Direct Role Switcher */}
-              <div className="pt-2 border-t border-neutral-200 space-y-1.5">
-                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
-                  Bascule d'espace de travail :
-                </span>
-                <div className="grid grid-cols-3 gap-1 p-1 bg-white rounded-lg border border-neutral-200 text-center">
-                  <button
-                    onClick={() => {
-                      switchRole('candidat');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
-                      role === 'candidat' || role === 'candidate'
-                        ? 'bg-neutral-900 text-white'
-                        : 'text-neutral-600 hover:text-neutral-900'
-                    }`}
-                  >
-                    Candidat
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('directeur_these');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
-                      role === 'directeur_these' || role === 'supervisor'
-                        ? 'bg-neutral-900 text-white'
-                        : 'text-neutral-600 hover:text-neutral-900'
-                    }`}
-                  >
-                    Dir. Thèse
-                  </button>
-                  <button
-                    onClick={() => {
-                      switchRole('directeur_structure');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
-                      role === 'directeur_structure' || role === 'structure_director'
-                        ? 'bg-neutral-900 text-white'
-                        : 'text-neutral-600 hover:text-neutral-900'
-                    }`}
-                  >
-                    Structure
-                  </button>
-                </div>
+              <div className="text-[11px] text-neutral-500">
+                {currentUser.establishment}
               </div>
             </div>
           ) : (
             <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
               <p className="text-xs text-neutral-600">
-                Connectez-vous avec votre adresse institutionnelle pour accéder à vos démarches doctorales.
+                Connectez-vous avec votre adresse institutionnelle pour gérer vos candidatures ou vos sujets.
               </p>
               <button
                 onClick={() => {
@@ -250,12 +240,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
               >
                 <LogIn className="w-4 h-4" />
-                <span>Connexion Email (@usmba.ac.ma)</span>
+                <span>Connexion (@usmba.ac.ma)</span>
               </button>
             </div>
           )}
 
-          {/* Mobile Navigation Links */}
+          {/* Mobile Nav Links */}
           <div className="space-y-1.5">
             <button
               onClick={() => handleNavClick('dashboard')}
@@ -265,21 +255,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
                   : 'text-neutral-800 hover:bg-neutral-100'
               }`}
             >
-              {currentUser ? getRoleBadge(currentUser.role).icon : <BookOpen className="w-4 h-4" />}
-              <span>{currentUser ? `Mon Espace (${getRoleBadge(currentUser.role).label})` : 'Catalogue des Sujets de Thèse'}</span>
+              {currentUser ? roleInfo.icon : <BookOpen className="w-4 h-4" />}
+              <span>{currentUser ? roleInfo.label : 'Catalogue des Sujets de Thèse'}</span>
             </button>
 
-            <button
-              onClick={() => handleNavClick('register_candidat')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
-                currentView === 'register_candidat'
-                  ? 'bg-neutral-900 text-white'
-                  : 'text-neutral-800 hover:bg-neutral-100'
-              }`}
-            >
-              <UserPlus className="w-4 h-4 text-neutral-500" />
-              <span>Page d'Inscription Candidat</span>
-            </button>
+            {!currentUser && (
+              <button
+                onClick={() => handleNavClick('register_candidat')}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
+                  currentView === 'register_candidat'
+                    ? 'bg-neutral-900 text-white'
+                    : 'text-neutral-800 hover:bg-neutral-100'
+                }`}
+              >
+                <UserPlus className="w-4 h-4 text-neutral-500" />
+                <span>Page d'Inscription Candidat</span>
+              </button>
+            )}
           </div>
 
           {currentUser && (

@@ -1,10 +1,7 @@
 export type Role =
   | 'candidat'
   | 'directeur_these'
-  | 'directeur_structure'
-  | 'candidate'
-  | 'supervisor'
-  | 'structure_director';
+  | 'directeur_structure';
 
 export interface User {
   id: string;
@@ -35,8 +32,8 @@ export interface ThesisTopic {
   supervisorEmail?: string;
   keywords: string[];
   summary: string;
-  status: TopicStatus; // valide (vert), en_attente (orange), cloture (rouge)
-  structureValidationStatus: StructureValidationStatus; // Examen par la direction de la structure
+  status: TopicStatus;
+  structureValidationStatus: StructureValidationStatus;
   structureFeedback?: string;
   slotsTotal: number;
   slotsTaken: number;
@@ -45,16 +42,33 @@ export interface ThesisTopic {
 }
 
 export type ApplicationStep = 1 | 2 | 3 | 4 | 5;
-// 1: Dossier soumis ➔ 2: Pièces validées ➔ 3: Avis Directeur ➔ 4: Validation Structure ➔ 5: Admis
+// 1. Inscription Dossier ➔ 2. Vérification Pièces ➔ 3. Evaluation Directeur Thèse ➔ 4. Validation Structure ➔ 5. Admission Finale
 
 export type ApplicationStatus =
   | 'soumis'
   | 'pieces_validees'
-  | 'avis_directeur'
+  | 'avis_favorable'
+  | 'avis_defavorable'
+  | 'a_corriger'
   | 'validation_structure'
   | 'admis'
-  | 'refuse'
-  | 'a_corriger';
+  | 'refuse';
+
+export type DocumentType = 'baccalaureat' | 'releve_notes' | 'diplomes' | 'cin';
+
+export interface CandidateDocument {
+  id: string;
+  candidateEmail: string;
+  type: DocumentType;
+  title: string;
+  fileName: string;
+  uploadedAt: string;
+  fileSize: string;
+  status: 'valide' | 'en_attente' | 'a_corriger';
+  previewUrl?: string;
+  dataUrl?: string; // Base64 data from live webcam camera scan or local upload
+  captureMethod?: 'upload' | 'camera';
+}
 
 export interface CandidateApplication {
   id: string;
@@ -75,28 +89,16 @@ export interface CandidateApplication {
   status: ApplicationStatus;
   currentStep: ApplicationStep;
   submittedDate: string;
+  documents: CandidateDocument[]; // 4 mandatory pieces attached directly to application
   cvUrl?: string;
   projetUrl?: string;
   activityReport?: string;
   notes?: string;
+  supervisorDecision?: 'favorable' | 'defavorable' | 'a_corriger';
   supervisorFeedback?: string; // Remarques pédagogiques de l'encadrant
+  supervisorGrade?: string; // Note ou appréciation
+  structureDecision?: 'valide' | 'rejete';
   structureFeedback?: string;  // Remarques de la commission de structure
-}
-
-export type DocumentType = 'baccalaureat' | 'releve_notes' | 'diplomes' | 'cin';
-
-export interface CandidateDocument {
-  id: string;
-  candidateEmail: string;
-  type: DocumentType;
-  title: string;
-  fileName: string;
-  uploadedAt: string;
-  fileSize: string;
-  status: 'valide' | 'en_attente' | 'a_corriger';
-  previewUrl?: string;
-  dataUrl?: string; // Base64 or Object URL for webcam scans / uploaded files
-  captureMethod?: 'upload' | 'camera';
 }
 
 export interface ReRegistration {

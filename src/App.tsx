@@ -11,11 +11,10 @@ import { ApplyModal } from './components/ApplyModal';
 import { ReRegistrationModal } from './components/ReRegistrationModal';
 import { AttachmentViewerModal } from './components/AttachmentViewerModal';
 import { ThesisTopic } from './types';
-import { CheckCircle2, ShieldCheck, UserCheck, GraduationCap, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, UserCheck, GraduationCap, ArrowRight, Lock } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
   const { currentUser, role, currentView, setCurrentView, toastMessage } = useApp();
-  const activeRole = currentUser?.role || role;
 
   // Modals state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -41,7 +40,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col font-sans selection:bg-neutral-900 selection:text-white transition-colors duration-200">
-      {/* Top Bar Navigation */}
+      {/* Top Bar Navigation with strict RBAC */}
       <Navbar
         onOpenLogin={() => setIsLoginOpen(true)}
         onOpenRegister={() => setCurrentView('register_candidat')}
@@ -53,61 +52,52 @@ const MainLayout: React.FC = () => {
         {currentView === 'register_candidat' ? (
           <CandidateRegisterPage onBackToLogin={() => setIsLoginOpen(true)} />
         ) : (
-          /* Role-based workspace or Public Catalogue */
+          /* Role-based workspace or Public Catalogue (Strict Route Isolation) */
           <>
-            {/* If user is logged in, show their specific role space */}
-            {currentUser && (activeRole === 'directeur_these' || activeRole === 'supervisor') && (
-              <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
-            )}
-
-            {currentUser && (activeRole === 'directeur_structure' || activeRole === 'structure_director') && (
-              <StructureDirectorView />
-            )}
-
-            {currentUser && (activeRole === 'candidat' || activeRole === 'candidate') && (
+            {/* 1. Candidate Workspace (Strictly candidate role only) */}
+            {currentUser && currentUser.role === 'candidat' && (
               <CandidateView
                 onOpenApply={handleApplyClick}
                 onOpenReReg={handleReRegClick}
               />
             )}
 
-            {/* Fallback safe check if logged in but role string differed */}
-            {currentUser &&
-              !['candidat', 'candidate', 'directeur_these', 'supervisor', 'directeur_structure', 'structure_director'].includes(
-                activeRole || ''
-              ) && (
-                <CandidateView
-                  onOpenApply={handleApplyClick}
-                  onOpenReReg={handleReRegClick}
-                />
-              )}
+            {/* 2. Thesis Supervisor Workspace (Strictly directeur_these role only) */}
+            {currentUser && currentUser.role === 'directeur_these' && (
+              <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
+            )}
 
-            {/* If logged out, show search catalogue directly with login prompt */}
+            {/* 3. Structure Director Workspace (Strictly directeur_structure role only) */}
+            {currentUser && currentUser.role === 'directeur_structure' && (
+              <StructureDirectorView />
+            )}
+
+            {/* 4. Public Catalogue when unauthenticated */}
             {!currentUser && (
               <div className="space-y-6">
-                <div className="bg-neutral-50 border-b border-neutral-100 py-6 px-4 text-center">
+                <div className="bg-neutral-50 border-b border-neutral-100 py-6 sm:py-8 px-4 text-center">
                   <div className="max-w-2xl mx-auto space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
                       Université Sidi Mohamed Ben Abdellah · Fès
                     </span>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
-                      Portail du Cycle Doctoral (GCD USMBA)
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
+                      Portail de Gestion du Cycle Doctoral (GCD USMBA)
                     </h1>
                     <p className="text-xs text-neutral-600 leading-relaxed max-w-xl mx-auto">
-                      Consultez les sujets de recherche doctorale ou connectez-vous avec votre adresse institutionnelle pour gérer vos candidatures, dépôts de pièces et validations.
+                      Consultez les sujets de recherche doctorale ou connectez-vous avec vos identifiants institutionnels pour postuler, déposer vos 4 pièces scannées ou évaluer les candidatures.
                     </p>
                     <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full max-w-md mx-auto">
                       <button
                         onClick={() => setIsLoginOpen(true)}
-                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+                        className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
                       >
-                        Connexion email institutionnel
+                        Connexion compte académique
                       </button>
                       <button
                         onClick={() => setCurrentView('register_candidat')}
-                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
+                        className="w-full sm:w-auto px-5 py-2.5 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
                       >
-                        Inscription initiale candidat
+                        Inscription candidat (@usmba.ac.ma)
                       </button>
                     </div>
                   </div>
@@ -133,8 +123,8 @@ const MainLayout: React.FC = () => {
           </div>
           <div className="flex items-center gap-3 text-[11px] text-neutral-400">
             <span>Centre d'Études Doctorales (CED)</span>
-            <span aria-hidden="true">·</span>
-            <span>Plateforme Dématérialisée Pure Light</span>
+            <span aria-hidden="true" className="text-neutral-300">·</span>
+            <span>Architecture Sécurisée RBAC</span>
           </div>
         </div>
       </footer>

@@ -18,6 +18,8 @@ import {
   ChevronRight,
   AlertCircle,
   ExternalLink,
+  Clock,
+  Award,
 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
 import { DocumentScannerModal } from './DocumentScannerModal';
@@ -52,7 +54,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   // Confirmation state for deleting application
   const [confirmDeleteAppId, setConfirmDeleteAppId] = useState<string | null>(null);
 
-  // Filter topics cleanly
+  // Filter topics
   const filteredTopics = useMemo(() => {
     return topics.filter((t) => {
       const matchesSearch =
@@ -69,14 +71,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     });
   }, [topics, searchQuery, selectedEstablishment]);
 
-  // Exact 5-step progress bar as required:
-  // Dossier soumis ➔ Pièces validées ➔ Avis Directeur ➔ Validation Structure ➔ Admis
+  // Exact 5 progression steps according to requirements:
+  // 1. Inscription Dossier ➔ 2. Vérification Pièces ➔ 3. Evaluation Directeur Thèse ➔ 4. Validation Structure ➔ 5. Admission Finale
   const PROGRESS_STEPS: { step: ApplicationStep; label: string; desc: string }[] = [
-    { step: 1, label: 'Dossier soumis', desc: 'Dépôt des informations et pièces' },
-    { step: 2, label: 'Pièces validées', desc: 'Conformité administrative des scans' },
-    { step: 3, label: 'Avis Directeur', desc: 'Évaluation pédagogique du directeur' },
-    { step: 4, label: 'Validation Structure', desc: 'Approbation laboratoire et CED' },
-    { step: 5, label: 'Admis', desc: 'Inscription doctorale validée' },
+    { step: 1, label: '1. Inscription Dossier', desc: 'Dépôt du profil et du sujet' },
+    { step: 2, label: '2. Vérification Pièces', desc: 'Conformité des 4 scans' },
+    { step: 3, label: '3. Evaluation Directeur', desc: 'Avis motivé du directeur de thèse' },
+    { step: 4, label: '4. Validation Structure', desc: 'Approbation du conseil du CED' },
+    { step: 5, label: '5. Admission Finale', desc: 'Inscription doctorale validée' },
   ];
 
   const currentStep: number = currentCandidateApp?.currentStep || 0;
@@ -86,19 +88,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     {
       type: 'baccalaureat',
       label: 'Baccalauréat',
-      description: 'Copie certifiée ou scan net du diplôme du Baccalauréat',
+      description: 'Diplôme du Baccalauréat certifié',
       icon: GraduationCap,
     },
     {
       type: 'releve_notes',
       label: 'Fiches et Relevés de Notes',
-      description: 'Relevés de notes officiels de Licence et Master',
+      description: 'Relevés de notes universitaires de Licence et Master',
       icon: FileText,
     },
     {
       type: 'diplomes',
       label: 'Diplômes universitaires',
-      description: 'Diplômes ou attestations de réussite (Licence, Master / Ingénieur)',
+      description: 'Diplômes ou attestations (Licence, Master / Ingénieur)',
       icon: FileCheck,
     },
     {
@@ -132,8 +134,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         <div className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">
-                Espace Candidat
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md border border-neutral-200">
+                Espace Candidat Doctorant
               </span>
               <span className="text-neutral-300">·</span>
               <span className="text-xs text-neutral-600 font-mono truncate max-w-[220px] sm:max-w-none">
@@ -170,7 +172,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* Responsive Horizontal Scroll Sub-Tabs */}
+      {/* Sub-Tabs */}
       <div className="border-b border-neutral-200 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-4 sm:gap-8 min-w-max pb-3 text-xs sm:text-sm">
           <button
@@ -192,7 +194,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            <span>2. Mes Candidatures & Avancement</span>
+            <span>2. Ma Candidature & Progression</span>
             {currentCandidateApp && (
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
             )}
@@ -206,7 +208,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 : 'border-transparent text-neutral-500 hover:text-neutral-900'
             }`}
           >
-            <span>3. Gestion des Documents (Scans)</span>
+            <span>3. Mes Pièces Justificatives (4 Scans)</span>
             <span className="px-1.5 py-0.5 text-[10px] bg-neutral-100 rounded-md font-mono text-neutral-700">
               {documents.filter((d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()).length}/4
             </span>
@@ -263,10 +265,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           {/* List of Topics */}
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-neutral-500">
-              <span className="tabular-nums">
+              <span className="tabular-nums font-medium text-neutral-800">
                 {filteredTopics.length} sujet{filteredTopics.length > 1 ? 's' : ''} disponible{filteredTopics.length > 1 ? 's' : ''}
               </span>
-              <span>Année Universitaire 2026-2027</span>
+              <span>Année Universitaire 2026-2027 · USMBA</span>
             </div>
 
             {filteredTopics.length === 0 ? (
@@ -307,7 +309,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                           <span aria-hidden="true" className="text-neutral-300">·</span>
                           <span>Dir. {topic.supervisorName}</span>
                           <span aria-hidden="true" className="text-neutral-300">·</span>
-                          <span className="text-emerald-700 font-semibold">Validé structure</span>
+                          <span className="text-emerald-700 font-semibold">Validé structure CED</span>
                         </div>
 
                         <p className="text-xs text-neutral-500 line-clamp-2 leading-relaxed">
@@ -353,28 +355,28 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* TAB 2: SUIVI DE L'AVANCEMENT & GESTION DE LA CANDIDATURE */}
+      {/* TAB 2: SUIVI PAR PROGRESSION (5 ÉTAPES CLÉS) */}
       {activeTab === 'suivi' && (
         <div className="space-y-6 sm:space-y-8">
           {currentCandidateApp ? (
             <div className="p-4 sm:p-6 md:p-8 border border-neutral-200 rounded-2xl bg-white space-y-6 sm:space-y-8 shadow-xs">
-              {/* Alert: Demande de correction si nécessaire */}
+              {/* Alert: Demande de correction si statut a_corriger */}
               {currentCandidateApp.status === 'a_corriger' && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Correction demandée par votre directeur de thèse :</span>
+                    <span>Correction requise par votre directeur de thèse :</span>
                   </div>
                   <p className="text-xs text-amber-800 leading-relaxed pl-6">
-                    "{currentCandidateApp.supervisorFeedback || currentCandidateApp.notes || 'Veuillez vérifier et renouveler vos pièces justificatives.'}"
+                    "{currentCandidateApp.supervisorFeedback || currentCandidateApp.notes || 'Veuillez renouveler ou vérifier vos pièces scannées.'}"
                   </p>
                   <div className="pl-6 pt-1">
                     <button
                       onClick={() => setActiveTab('documents')}
-                      className="px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                      className="px-3.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
                     >
                       <Camera className="w-3.5 h-3.5" />
-                      <span>Mettre à jour les pièces scannées</span>
+                      <span>Remplacer / re-scanner mes documents</span>
                     </button>
                   </div>
                 </div>
@@ -384,7 +386,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-neutral-100 pb-5">
                 <div className="space-y-1.5">
                   <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
-                    Dossier de Doctorat en cours
+                    Dossier de Candidature Doctorale Actif
                   </div>
                   <h2 className="text-base sm:text-lg md:text-xl font-bold text-neutral-900 leading-snug">
                     {currentCandidateApp.topicTitle}
@@ -400,11 +402,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   </div>
                 </div>
 
-                {/* Option pour supprimer sa candidature */}
                 <div className="w-full sm:w-auto pt-2 sm:pt-0">
                   {confirmDeleteAppId === currentCandidateApp.id ? (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
-                      <span className="text-xs text-rose-800 font-medium">Confirmer la suppression définitive ?</span>
+                      <span className="text-xs text-rose-800 font-medium">Confirmer le retrait du dossier ?</span>
                       <div className="flex items-center gap-2 mt-1 sm:mt-0">
                         <button
                           onClick={() => {
@@ -413,7 +414,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                           }}
                           className="flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700"
                         >
-                          Oui, supprimer
+                          Oui, retirer
                         </button>
                         <button
                           onClick={() => setConfirmDeleteAppId(null)}
@@ -427,27 +428,26 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     <button
                       onClick={() => setConfirmDeleteAppId(currentCandidateApp.id)}
                       className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl hover:bg-rose-50 transition-colors"
-                      title="Supprimer la candidature"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Supprimer ma candidature</span>
+                      <span>Retirer ma candidature</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Progress Bar: Exact 5 Official Steps */}
+              {/* 5-Step Dynamic Progress Bar */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                    Progression du dossier (5 Étapes Clés)
+                    Barre de Progression Officielle (5 Étapes)
                   </h3>
                   <span className="text-xs font-medium text-neutral-600">
-                    Étape actuelle : <strong className="text-neutral-900">{PROGRESS_STEPS[currentStep - 1]?.label || 'En cours'}</strong> ({currentStep}/5)
+                    Statut actuel : <strong className="text-neutral-900">{PROGRESS_STEPS[currentStep - 1]?.label || 'Dossier soumis'}</strong> ({currentStep}/5)
                   </span>
                 </div>
 
-                {/* DESKTOP/TABLET VIEW (Horizontal timeline with connecting line) */}
+                {/* DESKTOP VIEW (Horizontal timeline with connector bar) */}
                 <div className="hidden sm:block relative pt-3 pb-4">
                   {/* Background Track Line */}
                   <div className="absolute top-7 left-8 right-8 h-1 bg-neutral-100 -z-0" />
@@ -459,7 +459,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     }}
                   />
 
-                  {/* 5 Progression Steps Nodes */}
+                  {/* 5 Step Nodes */}
                   <div className="grid grid-cols-5 gap-2 relative z-10">
                     {PROGRESS_STEPS.map((s) => {
                       const isCompleted = currentStep > s.step;
@@ -489,7 +489,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                           >
                             {s.label}
                           </span>
-                          <span className="text-[11px] text-neutral-400 hidden md:block mt-0.5 leading-tight">
+                          <span className="text-[10px] text-neutral-400 hidden md:block mt-0.5 leading-tight">
                             {s.desc}
                           </span>
                         </div>
@@ -498,7 +498,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   </div>
                 </div>
 
-                {/* MOBILE VIEW (Vertical Step-by-Step Clean Card Stack) */}
+                {/* MOBILE VIEW (Vertical Step Cards) */}
                 <div className="block sm:hidden space-y-2 pt-2">
                   {PROGRESS_STEPS.map((s) => {
                     const isCompleted = currentStep > s.step;
@@ -550,20 +550,27 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Pedagogical Remarks Box */}
+              {/* Feedback and Notes from Supervisor */}
               {currentCandidateApp.supervisorFeedback && (
-                <div className="p-3.5 sm:p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1">
-                  <div className="text-xs font-bold text-neutral-900 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Avis du Directeur de thèse :</span>
+                <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1.5">
+                  <div className="text-xs font-bold text-neutral-900 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Avis du Directeur de thèse :</span>
+                    </span>
+                    {currentCandidateApp.supervisorGrade && (
+                      <span className="font-mono text-[11px] bg-white border border-neutral-200 px-2 py-0.5 rounded-md text-neutral-800">
+                        Appréciation : {currentCandidateApp.supervisorGrade}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-neutral-600 leading-relaxed pl-6">
-                    {currentCandidateApp.supervisorFeedback}
+                  <p className="text-xs text-neutral-700 leading-relaxed pl-5">
+                    "{currentCandidateApp.supervisorFeedback}"
                   </p>
                 </div>
               )}
 
-              {/* Responsive Summary Table */}
+              {/* Summary Table / Card */}
               <div className="space-y-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-neutral-700">
                   Fiche synthétique du dossier
@@ -603,7 +610,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               </p>
               <button
                 onClick={() => setActiveTab('catalogue')}
-                className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors"
+                className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
               >
                 Parcourir les sujets disponibles
               </button>
@@ -685,10 +692,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-neutral-900">
-                Pièces justificatives obligatoires (Scans & Dépôts)
+                Pièces justificatives obligatoires (4 Scans Certifiés)
               </h2>
               <p className="text-xs text-neutral-500">
-                Scannez directement vos pièces avec votre caméra/webcam ou téléversez vos fichiers PDF/images.
+                Scannez directement vos pièces avec votre webcam/caméra mobile ou téléversez vos fichiers.
               </p>
             </div>
             <div className="text-xs font-semibold text-neutral-700 bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-200 self-start sm:self-auto">
@@ -738,7 +745,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         {uploadedDoc.captureMethod === 'camera' && (
                           <div className="text-[10px] text-neutral-500 flex items-center gap-1">
                             <Camera className="w-3 h-3 text-neutral-400" />
-                            <span>Numérisé par webcam / appareil mobile</span>
+                            <span>Numérisé via caméra directe</span>
                           </div>
                         )}
 
@@ -753,6 +760,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                                   content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
                                   author: currentUser?.name || 'Candidat',
                                   date: uploadedDoc.uploadedAt,
+                                  dataUrl: uploadedDoc.dataUrl,
                                 })
                               }
                               className="text-neutral-900 font-semibold underline flex items-center gap-1"

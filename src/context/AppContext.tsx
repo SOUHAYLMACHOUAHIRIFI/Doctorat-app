@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-  User,
   Role,
+  User,
   ThesisTopic,
   CandidateApplication,
   ReRegistration,
@@ -18,26 +18,29 @@ import {
   INITIAL_RE_REGISTRATIONS,
 } from '../data/mockData';
 
-interface AppContextType {
+export interface AppContextType {
+  // Current authenticated user & role
   currentUser: User | null;
   role: Role | null;
   registeredUsers: User[];
-  // Auth functions
-  loginWithEmail: (email: string, explicitRole?: Role) => { success: boolean; role: Role; message: string };
+
+  // Authentication & Security (Strict RBAC)
+  loginWithEmail: (email: string, password?: string) => { success: boolean; role?: Role; message: string };
   registerCandidate: (data: {
     email: string;
     nom: string;
     prenom: string;
     phone: string;
     cin: string;
+    password: string;
+    etablissementOrigine?: string;
+    diplomeOrigine?: string;
   }) => { success: boolean; message: string };
   logout: () => void;
-  detectRoleFromEmail: (email: string) => Role;
-  switchRole: (targetRole: Role) => void;
 
   // Topics management
   topics: ThesisTopic[];
-  addTopic: (topic: Omit<ThesisTopic, 'id' | 'createdAt' | 'slotsTaken' | 'structureValidationStatus'>) => void;
+  addTopic: (newTopicData: Omit<ThesisTopic, 'id' | 'createdAt' | 'slotsTaken' | 'structureValidationStatus'>) => void;
   updateTopic: (topicId: string, updatedFields: Partial<ThesisTopic>) => void;
   approveTopicStructure: (topicId: string, feedback?: string) => void;
   rejectTopicStructure: (topicId: string, feedback?: string) => void;
@@ -56,7 +59,8 @@ interface AppContextType {
       email?: string;
       etablissementOrigine?: string;
       diplomeOrigine?: string;
-    }
+    },
+    attachedDocs?: CandidateDocument[]
   ) => void;
   deleteApplication: (appId: string) => void;
   updateApplicationProgress: (
@@ -64,6 +68,17 @@ interface AppContextType {
     step: ApplicationStep,
     status: ApplicationStatus,
     notes?: string,
+    feedback?: string
+  ) => void;
+  evaluateApplicationSupervisor: (
+    appId: string,
+    decision: 'favorable' | 'defavorable' | 'a_corriger',
+    grade?: string,
+    feedback?: string
+  ) => void;
+  validateApplicationStructure: (
+    appId: string,
+    decision: 'valide' | 'rejete',
     feedback?: string
   ) => void;
   currentCandidateApp?: CandidateApplication;
@@ -76,7 +91,7 @@ interface AppContextType {
     fileSize?: string,
     dataUrl?: string,
     captureMethod?: 'camera' | 'upload'
-  ) => void;
+  ) => CandidateDocument | undefined;
   deleteCandidateDocument: (docId: string) => void;
 
   // Re-registrations
@@ -86,8 +101,8 @@ interface AppContextType {
   currentCandidateReReg?: ReRegistration;
 
   // Attachment Viewer
-  viewingAttachment: { title: string; subtitle: string; content: string; author: string; date: string } | null;
-  openAttachment: (data: { title: string; subtitle: string; content: string; author: string; date: string }) => void;
+  viewingAttachment: { title: string; subtitle: string; content: string; author: string; date: string; dataUrl?: string } | null;
+  openAttachment: (data: { title: string; subtitle: string; content: string; author: string; date: string; dataUrl?: string }) => void;
   closeAttachment: () => void;
 
   // Active view router
@@ -101,84 +116,30 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Helper for automatic role detection based on institutional email
-export function resolveRoleFromEmail(email: string, users?: User[]): Role {
-  const normalized = email.trim().toLowerCase();
-
-  // 1. Pattern detection for Direction de Structure / Admin (CED, Doyen, Présidence, Labo)
-  if (
-    normalized.includes('structure') ||
-    normalized.includes('ced') ||
-    normalized.includes('admin') ||
-    normalized.includes('direction') ||
-    normalized.includes('director.structure') ||
-    normalized.includes('doyen') ||
-    normalized.includes('president') ||
-    normalized.includes('labo') ||
-    normalized.includes('pole') ||
-    normalized.includes('laboratoire')
-  ) {
-    return 'directeur_structure';
-  }
-
-  // 2. Pattern detection for Directeurs de thèse / Professeurs / Supervisors / Encadrants
-  if (
-    normalized.includes('supervisor') ||
-    normalized.includes('these') ||
-    normalized.includes('thesis') ||
-    normalized.includes('encadrant') ||
-    normalized.includes('prof') ||
-    normalized.startsWith('pr.') ||
-    normalized.startsWith('pr_') ||
-    normalized.startsWith('dr.') ||
-    normalized.startsWith('dr_') ||
-    normalized.includes('bennani') ||
-    normalized.includes('chami') ||
-    normalized.includes('directeur') ||
-    normalized.includes('enseignant')
-  ) {
-    return 'directeur_these';
-  }
-
-  // 3. Check if user already exists in directory (if provided)
-  if (users) {
-    const existing = users.find((u) => u.email.toLowerCase() === normalized);
-    if (existing) {
-      if (existing.role === 'supervisor') return 'directeur_these';
-      if (existing.role === 'structure_director') return 'directeur_structure';
-      if (existing.role === 'candidate') return 'candidat';
-      return existing.role;
-    }
-  }
-
-  // 4. Default for all candidate / student emails
-  return 'candidat';
-}
-
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Directory of users
+  // Directory of users with localStorage persistence
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('gcd_users_v2');
+    const saved = localStorage.getItem('gcd_users_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
     return KNOWN_USERS;
   });
 
-  // Current logged in user (starts with default demo candidate, or saved)
+  // Current logged in user (starts with demo candidate Youssef, or saved user)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('gcd_current_user_v2');
+    const saved = localStorage.getItem('gcd_current_user_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-    return KNOWN_USERS[0]; // Youssef El Amrani by default
+    return KNOWN_USERS[0]; // Youssef El Amrani by default for immediate preview
   });
 
   const [currentView, setCurrentView] = useState<'catalogue' | 'register_candidat' | 'dashboard'>('dashboard');
 
   // Topics
   const [topics, setTopics] = useState<ThesisTopic[]>(() => {
-    const saved = localStorage.getItem('gcd_topics_v2');
+    const saved = localStorage.getItem('gcd_topics_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -187,7 +148,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Applications
   const [applications, setApplications] = useState<CandidateApplication[]>(() => {
-    const saved = localStorage.getItem('gcd_applications_v2');
+    const saved = localStorage.getItem('gcd_applications_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -196,7 +157,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Documents
   const [documents, setDocuments] = useState<CandidateDocument[]>(() => {
-    const saved = localStorage.getItem('gcd_documents_v2');
+    const saved = localStorage.getItem('gcd_documents_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -205,7 +166,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Re-registrations
   const [reRegistrations, setReRegistrations] = useState<ReRegistration[]>(() => {
-    const saved = localStorage.getItem('gcd_rereg_v2');
+    const saved = localStorage.getItem('gcd_rereg_v3');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -219,6 +180,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     content: string;
     author: string;
     date: string;
+    dataUrl?: string;
   } | null>(null);
 
   // Toast
@@ -233,110 +195,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync state to localStorage
   useEffect(() => {
-    localStorage.setItem('gcd_users_v2', JSON.stringify(registeredUsers));
+    localStorage.setItem('gcd_users_v3', JSON.stringify(registeredUsers));
   }, [registeredUsers]);
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('gcd_current_user_v2', JSON.stringify(currentUser));
+      localStorage.setItem('gcd_current_user_v3', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('gcd_current_user_v2');
+      localStorage.removeItem('gcd_current_user_v3');
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_topics_v2', JSON.stringify(topics));
+    localStorage.setItem('gcd_topics_v3', JSON.stringify(topics));
   }, [topics]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_applications_v2', JSON.stringify(applications));
+    localStorage.setItem('gcd_applications_v3', JSON.stringify(applications));
   }, [applications]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_documents_v2', JSON.stringify(documents));
+    localStorage.setItem('gcd_documents_v3', JSON.stringify(documents));
   }, [documents]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_rereg_v2', JSON.stringify(reRegistrations));
+    localStorage.setItem('gcd_rereg_v3', JSON.stringify(reRegistrations));
   }, [reRegistrations]);
 
-  // Ensure pure clean white theme
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-  }, []);
-
-  // Automatic role detection function
-  const detectRoleFromEmail = (email: string): Role => {
-    return resolveRoleFromEmail(email, registeredUsers);
-  };
-
-  // Login with institutional email - automatically grants role (or honors explicit role selection)
-  const loginWithEmail = (email: string, explicitRole?: Role) => {
+  // Strict Login Authentication (RBAC)
+  const loginWithEmail = (email: string, password?: string) => {
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes('@')) {
-      return { success: false, role: 'candidat' as Role, message: 'Veuillez saisir une adresse email valide.' };
+      return { success: false, message: 'Veuillez saisir une adresse email valide.' };
     }
 
-    let determinedRole = explicitRole || resolveRoleFromEmail(normalized, registeredUsers);
-    if (determinedRole === 'supervisor') determinedRole = 'directeur_these';
-    if (determinedRole === 'structure_director') determinedRole = 'directeur_structure';
-    if (determinedRole === 'candidate') determinedRole = 'candidat';
-
-    let matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === normalized);
+    // Find in registered users directory
+    const matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === normalized);
 
     if (!matchedUser) {
-      // Auto-provision user account with determined role
-      const prefix = normalized.split('@')[0].replace(/[._]/g, ' ');
-      const formattedName = prefix
-        .split(' ')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
-
-      matchedUser = {
-        id: `user-${Date.now().toString(36)}`,
-        name: determinedRole === 'directeur_these' ? `Pr. ${formattedName}` : formattedName,
-        email: normalized,
-        role: determinedRole,
-        establishment: 'FST Fès',
-        laboratory:
-          determinedRole === 'directeur_these'
-            ? 'Laboratoire LISAC'
-            : determinedRole === 'directeur_structure'
-            ? 'Centre d’Études Doctorales (CED)'
-            : undefined,
+      return {
+        success: false,
+        message: 'Ce compte n’est pas enregistré. Les candidats doivent créer un compte via l’onglet Inscription.',
       };
+    }
 
-      setRegisteredUsers((prev) => [...prev, matchedUser!]);
-    } else {
-      // Synchronize existing user role if different
-      if (matchedUser.role !== determinedRole) {
-        matchedUser = { ...matchedUser, role: determinedRole };
-        setRegisteredUsers((prev) =>
-          prev.map((u) => (u.id === matchedUser!.id ? matchedUser! : u))
-        );
-      }
+    // Password verification
+    const expectedPassword = matchedUser.password || 'usmba2026';
+    if (password && password.trim() !== expectedPassword) {
+      return {
+        success: false,
+        message: 'Mot de passe incorrect. Pour les comptes institutionnels existants, le mot de passe initial est usmba2026.',
+      };
     }
 
     setCurrentUser(matchedUser);
     setCurrentView('dashboard');
-    showToast(`Connexion réussie : ${getRoleLabel(determinedRole)}`);
-    return { success: true, role: determinedRole, message: 'Connexion réussie' };
+    showToast(`Connexion réussie : ${getRoleLabel(matchedUser.role)} (${matchedUser.name})`);
+    return { success: true, role: matchedUser.role, message: 'Connexion réussie' };
   };
 
-  // Dedicated Candidate Registration
+  // Dedicated Candidate Registration (requires @usmba.ac.ma)
   const registerCandidate = (data: {
     email: string;
     nom: string;
     prenom: string;
     phone: string;
     cin: string;
+    password: string;
+    etablissementOrigine?: string;
+    diplomeOrigine?: string;
   }) => {
     const normalizedEmail = data.email.trim().toLowerCase();
 
-    // Check if email already registered
+    if (!normalizedEmail.endsWith('@usmba.ac.ma')) {
+      return {
+        success: false,
+        message: 'L’inscription requiert obligatoirement une adresse email institutionnelle (@usmba.ac.ma).',
+      };
+    }
+
     const exists = registeredUsers.some((u) => u.email.toLowerCase() === normalizedEmail);
     if (exists) {
-      return { success: false, message: 'Cette adresse email est déjà enregistrée. Veuillez vous connecter.' };
+      return {
+        success: false,
+        message: 'Cette adresse email est déjà enregistrée. Veuillez vous connecter avec votre mot de passe.',
+      };
     }
 
     const newCandidate: User = {
@@ -345,64 +288,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       firstName: data.prenom.trim(),
       lastName: data.nom.trim(),
       email: normalizedEmail,
+      password: data.password || 'usmba2026',
       role: 'candidat',
       phone: data.phone.trim(),
       cin: data.cin.trim().toUpperCase(),
-      establishment: 'FST Fès',
+      establishment: data.etablissementOrigine || 'FST Fès',
+      etablissementOrigine: data.etablissementOrigine || 'FST Fès',
+      diplomeOrigine: data.diplomeOrigine || 'Master de Recherche',
     };
 
     setRegisteredUsers((prev) => [...prev, newCandidate]);
     setCurrentUser(newCandidate);
     setCurrentView('dashboard');
-    showToast(`Compte Candidat créé avec succès ! Bienvenue ${newCandidate.name}`);
+    showToast(`Compte candidat créé avec succès ! Bienvenue ${newCandidate.name}`);
     return { success: true, message: 'Inscription finalisée' };
   };
 
   const logout = () => {
     setCurrentUser(null);
-    showToast('Vous avez été déconnecté.');
-  };
-
-  // Immediate role switcher for seamless navigation across all 3 dashboards
-  const switchRole = (targetRole: Role) => {
-    let normalizedRole: Role = targetRole;
-    if (targetRole === 'supervisor') normalizedRole = 'directeur_these';
-    if (targetRole === 'structure_director') normalizedRole = 'directeur_structure';
-    if (targetRole === 'candidate') normalizedRole = 'candidat';
-
-    // Find existing user in registeredUsers or KNOWN_USERS
-    const targetUser =
-      registeredUsers.find((u) => u.role === normalizedRole || u.role === targetRole) ||
-      KNOWN_USERS.find((u) => u.role === normalizedRole || u.role === targetRole);
-
-    if (targetUser) {
-      setCurrentUser(targetUser);
-      setCurrentView('dashboard');
-      showToast(`Espace actif : ${getRoleLabel(normalizedRole)} (${targetUser.name})`);
-    } else {
-      const fallbackUser: User = {
-        id: `user-${Date.now().toString(36)}`,
-        name:
-          normalizedRole === 'directeur_these'
-            ? 'Pr. Karim Bennani'
-            : normalizedRole === 'directeur_structure'
-            ? 'Direction de Structure CED'
-            : 'Candidat Doctorant',
-        email:
-          normalizedRole === 'directeur_these'
-            ? 'supervisor@usmba.ac.ma'
-            : normalizedRole === 'directeur_structure'
-            ? 'structure@usmba.ac.ma'
-            : 'candidat@usmba.ac.ma',
-        role: normalizedRole,
-        establishment: 'FST Fès',
-        laboratory: normalizedRole === 'directeur_these' ? 'Laboratoire LISAC' : undefined,
-      };
-      setRegisteredUsers((prev) => [...prev, fallbackUser]);
-      setCurrentUser(fallbackUser);
-      setCurrentView('dashboard');
-      showToast(`Espace actif : ${getRoleLabel(normalizedRole)}`);
-    }
+    setCurrentView('catalogue');
+    showToast('Vous avez été déconnecté avec succès.');
   };
 
   // Topics
@@ -412,10 +317,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `th-${Date.now().toString(36)}`,
       createdAt: new Date().toISOString().split('T')[0],
       slotsTaken: 0,
-      structureValidationStatus: 'en_examen', // Requires structure approval
+      structureValidationStatus: 'en_examen',
     };
     setTopics((prev) => [newTopic, ...prev]);
-    showToast('Nouveau sujet de thèse créé et soumis pour validation par la structure.');
+    showToast('Nouveau sujet de thèse créé et soumis pour validation au CED.');
   };
 
   const updateTopic = (topicId: string, updatedFields: Partial<ThesisTopic>) => {
@@ -430,7 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : t
       )
     );
-    showToast('Sujet de thèse mis à jour avec succès.');
+    showToast('Sujet de thèse mis à jour.');
   };
 
   const approveTopicStructure = (topicId: string, feedback?: string) => {
@@ -441,12 +346,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...t,
               structureValidationStatus: 'approuve',
               status: 'valide',
-              structureFeedback: feedback || 'Sujet validé et approuvé par la direction de la structure de recherche.',
+              structureFeedback: feedback || 'Sujet validé et approuvé par la direction de structure (CED).',
             }
           : t
       )
     );
-    showToast('Sujet de thèse approuvé au niveau de la structure de recherche.');
+    showToast('Sujet de thèse approuvé au niveau de la structure.');
   };
 
   const rejectTopicStructure = (topicId: string, feedback?: string) => {
@@ -457,12 +362,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...t,
               structureValidationStatus: 'rejete',
               status: 'cloture',
-              structureFeedback: feedback || 'Sujet non retenu par la commission de la structure.',
+              structureFeedback: feedback || 'Sujet non retenu par le conseil de structure.',
             }
           : t
       )
     );
-    showToast('Sujet de thèse refusé par la structure.');
+    showToast('Sujet de thèse non retenu.');
   };
 
   // Applications
@@ -478,7 +383,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       email?: string;
       etablissementOrigine?: string;
       diplomeOrigine?: string;
-    }
+    },
+    attachedDocs?: CandidateDocument[]
   ) => {
     if (!currentUser) return;
 
@@ -494,9 +400,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const candidateName = details?.nom && details?.prenom
-      ? `${details.prenom.trim()} ${details.nom.trim()}`
-      : currentUser.name;
+    const candidateName =
+      details?.nom && details?.prenom
+        ? `${details.prenom.trim()} ${details.nom.trim()}`
+        : currentUser.name;
+
+    // Gather candidate documents
+    const userDocs = attachedDocs && attachedDocs.length > 0
+      ? attachedDocs
+      : documents.filter((d) => d.candidateEmail.toLowerCase() === candidateEmail.toLowerCase());
 
     const newApp: CandidateApplication = {
       id: `app-${Date.now().toString(36)}`,
@@ -507,16 +419,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       candidateEmail,
       candidatePhone: details?.phone || currentUser.phone,
       candidateCin: details?.cin || currentUser.cin,
-      etablissementOrigine: details?.etablissementOrigine || currentUser.etablissementOrigine || 'Université Sidi Mohamed Ben Abdellah',
+      etablissementOrigine:
+        details?.etablissementOrigine || currentUser.etablissementOrigine || 'Université Sidi Mohamed Ben Abdellah',
       diplomeOrigine: details?.diplomeOrigine || currentUser.diplomeOrigine || 'Master de Recherche',
       establishment: targetTopic.establishment,
       laboratory: targetTopic.laboratory,
       supervisorName: targetTopic.supervisorName,
       supervisorId: targetTopic.supervisorId,
       status: 'soumis',
-      currentStep: 1, // Step 1: Dossier soumis
+      currentStep: 1, // Étape 1 : Inscription Dossier
       submittedDate: new Date().toISOString().split('T')[0],
-      notes: notes || 'Candidature initiale transmise avec succès.',
+      documents: userDocs,
+      notes: notes || 'Candidature formelle et 4 pièces justificatives transmises.',
       activityReport: activityReport || 'Dossier de candidature initial et projet de recherche préliminaire.',
     };
 
@@ -538,22 +452,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
-    // Update slots
+    // Increment topic slots taken
     setTopics((prev) =>
       prev.map((t) => (t.id === topicId ? { ...t, slotsTaken: t.slotsTaken + 1 } : t))
     );
 
-    showToast('Candidature soumise avec succès (Étape 1 : Dossier soumis)');
+    showToast('Candidature déposée avec succès (Étape 1 : Inscription Dossier)');
   };
 
-  // Allow candidate to delete their application
   const deleteApplication = (appId: string) => {
     const target = applications.find((a) => a.id === appId);
     if (!target) return;
 
     setApplications((prev) => prev.filter((a) => a.id !== appId));
 
-    // Release slot on topic
     if (target.topicId) {
       setTopics((prev) =>
         prev.map((t) =>
@@ -562,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
-    showToast('Candidature supprimée avec succès.');
+    showToast('Candidature retirée.');
   };
 
   const updateApplicationProgress = (
@@ -588,6 +500,94 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Dossier candidat mis à jour : Étape ${step}`);
   };
 
+  // Supervisor pedagogical evaluation
+  const evaluateApplicationSupervisor = (
+    appId: string,
+    decision: 'favorable' | 'defavorable' | 'a_corriger',
+    grade?: string,
+    feedback?: string
+  ) => {
+    setApplications((prev) =>
+      prev.map((a) => {
+        if (a.id !== appId) return a;
+
+        if (decision === 'favorable') {
+          return {
+            ...a,
+            currentStep: 4, // Étape 4 : Validation Structure
+            status: 'avis_favorable',
+            supervisorDecision: 'favorable',
+            supervisorGrade: grade || a.supervisorGrade || 'Favorable',
+            supervisorFeedback: feedback || a.supervisorFeedback || 'Avis favorable émis par le directeur de thèse.',
+            notes: 'Avis favorable accordé. Dossier transmis à la direction de la structure pour validation finale.',
+          };
+        } else if (decision === 'a_corriger') {
+          return {
+            ...a,
+            status: 'a_corriger',
+            supervisorDecision: 'a_corriger',
+            supervisorFeedback: feedback || 'Veuillez corriger ou compléter vos pièces justificatives.',
+            notes: 'Correction requise par le directeur de thèse avant réévaluation.',
+          };
+        } else {
+          return {
+            ...a,
+            status: 'refuse',
+            supervisorDecision: 'defavorable',
+            supervisorFeedback: feedback || 'Candidature non retenue lors de l’évaluation pédagogique.',
+            notes: 'Candidature non retenue par le directeur de thèse.',
+          };
+        }
+      })
+    );
+
+    if (decision === 'favorable') {
+      showToast('Avis favorable émis : dossier promu à l’Étape 4 (Validation Structure)');
+    } else if (decision === 'a_corriger') {
+      showToast('Demande de correction transmise au candidat');
+    } else {
+      showToast('Avis défavorable enregistré');
+    }
+  };
+
+  // Structure Director validation
+  const validateApplicationStructure = (
+    appId: string,
+    decision: 'valide' | 'rejete',
+    feedback?: string
+  ) => {
+    setApplications((prev) =>
+      prev.map((a) => {
+        if (a.id !== appId) return a;
+
+        if (decision === 'valide') {
+          return {
+            ...a,
+            currentStep: 5, // Étape 5 : Admission Finale
+            status: 'admis',
+            structureDecision: 'valide',
+            structureFeedback: feedback || 'Validation officielle accordée par la commission du CED USMBA.',
+            notes: 'Candidat admis définitivement en doctorat. Inscription validée.',
+          };
+        } else {
+          return {
+            ...a,
+            status: 'refuse',
+            structureDecision: 'rejete',
+            structureFeedback: feedback || 'Dossier non retenu par le conseil du CED.',
+            notes: 'Candidature non retenue lors de la commission de structure.',
+          };
+        }
+      })
+    );
+
+    if (decision === 'valide') {
+      showToast('Candidat admis définitivement (Étape 5 : Admission Finale)');
+    } else {
+      showToast('Dossier rejeté par la commission de structure');
+    }
+  };
+
   // Documents management with webcam scan and upload support
   const uploadCandidateDocument = (
     type: DocumentType,
@@ -595,7 +595,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fileSize = '1.8 Mo',
     dataUrl?: string,
     captureMethod: 'camera' | 'upload' = 'upload'
-  ) => {
+  ): CandidateDocument | undefined => {
     if (!currentUser) return;
 
     const titles: Record<DocumentType, string> = {
@@ -619,18 +619,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setDocuments((prev) => {
-      // Replace existing document of same type or add
       const filtered = prev.filter(
         (d) => !(d.candidateEmail.toLowerCase() === currentUser.email.toLowerCase() && d.type === type)
       );
       return [newDoc, ...filtered];
     });
 
-    showToast(`Pièce justificative ${captureMethod === 'camera' ? 'scannée par caméra' : 'téléversée'} : ${titles[type]}`);
+    // Also update current candidate's active application if any
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()) {
+          const updatedDocs = [
+            ...(app.documents || []).filter((d) => d.type !== type),
+            newDoc,
+          ];
+          return { ...app, documents: updatedDocs };
+        }
+        return app;
+      })
+    );
+
+    showToast(`Pièce ${captureMethod === 'camera' ? 'scannée par caméra' : 'téléversée'} : ${titles[type]}`);
+    return newDoc;
   };
 
   const deleteCandidateDocument = (docId: string) => {
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    setApplications((prev) =>
+      prev.map((app) => ({
+        ...app,
+        documents: (app.documents || []).filter((d) => d.id !== docId),
+      }))
+    );
     showToast('Document retiré.');
   };
 
@@ -681,6 +701,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     content: string;
     author: string;
     date: string;
+    dataUrl?: string;
   }) => {
     setViewingAttachment(data);
   };
@@ -706,8 +727,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         loginWithEmail,
         registerCandidate,
         logout,
-        detectRoleFromEmail,
-        switchRole,
         topics,
         addTopic,
         updateTopic,
@@ -717,6 +736,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addApplication,
         deleteApplication,
         updateApplicationProgress,
+        evaluateApplicationSupervisor,
+        validateApplicationStructure,
         currentCandidateApp,
         documents,
         uploadCandidateDocument,
@@ -748,14 +769,11 @@ export const useApp = () => {
 function getRoleLabel(role: Role): string {
   switch (role) {
     case 'candidat':
-    case 'candidate':
       return 'Candidat / Doctorant';
     case 'directeur_these':
-    case 'supervisor':
       return 'Directeur de Thèse';
     case 'directeur_structure':
-    case 'structure_director':
-      return 'Directeur de Structure (Admin)';
+      return 'Directeur de Structure (CED)';
     default:
       return 'Utilisateur';
   }

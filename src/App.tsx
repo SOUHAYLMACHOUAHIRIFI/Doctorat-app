@@ -15,6 +15,7 @@ import { CheckCircle2, ShieldCheck, UserCheck, GraduationCap, ArrowRight } from 
 
 const MainLayout: React.FC = () => {
   const { currentUser, role, currentView, setCurrentView, toastMessage } = useApp();
+  const activeRole = currentUser?.role || role;
 
   // Modals state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -55,25 +56,25 @@ const MainLayout: React.FC = () => {
           /* Role-based workspace or Public Catalogue */
           <>
             {/* If user is logged in, show their specific role space */}
-            {currentUser && (role === 'candidat' || role === 'candidate') && (
+            {currentUser && (activeRole === 'directeur_these' || activeRole === 'supervisor') && (
+              <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
+            )}
+
+            {currentUser && (activeRole === 'directeur_structure' || activeRole === 'structure_director') && (
+              <StructureDirectorView />
+            )}
+
+            {currentUser && (activeRole === 'candidat' || activeRole === 'candidate') && (
               <CandidateView
                 onOpenApply={handleApplyClick}
                 onOpenReReg={handleReRegClick}
               />
             )}
 
-            {currentUser && (role === 'directeur_these' || role === 'supervisor') && (
-              <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
-            )}
-
-            {currentUser && (role === 'directeur_structure' || role === 'structure_director') && (
-              <StructureDirectorView />
-            )}
-
             {/* Fallback safe check if logged in but role string differed */}
             {currentUser &&
               !['candidat', 'candidate', 'directeur_these', 'supervisor', 'directeur_structure', 'structure_director'].includes(
-                role || ''
+                activeRole || ''
               ) && (
                 <CandidateView
                   onOpenApply={handleApplyClick}

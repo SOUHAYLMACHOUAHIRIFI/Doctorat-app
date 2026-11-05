@@ -23,7 +23,7 @@ interface AppContextType {
   role: Role | null;
   registeredUsers: User[];
   // Auth functions
-  loginWithEmail: (email: string) => { success: boolean; role: Role; message: string };
+  loginWithEmail: (email: string, explicitRole?: Role) => { success: boolean; role: Role; message: string };
   registerCandidate: (data: {
     email: string;
     nom: string;
@@ -44,14 +44,39 @@ interface AppContextType {
 
   // Applications management
   applications: CandidateApplication[];
-  addApplication: (topicId: string, notes?: string, activityReport?: string) => void;
+  addApplication: (
+    topicId: string,
+    notes?: string,
+    activityReport?: string,
+    details?: {
+      nom?: string;
+      prenom?: string;
+      phone?: string;
+      cin?: string;
+      email?: string;
+      etablissementOrigine?: string;
+      diplomeOrigine?: string;
+    }
+  ) => void;
   deleteApplication: (appId: string) => void;
-  updateApplicationProgress: (appId: string, step: ApplicationStep, status: ApplicationStatus, notes?: string) => void;
+  updateApplicationProgress: (
+    appId: string,
+    step: ApplicationStep,
+    status: ApplicationStatus,
+    notes?: string,
+    feedback?: string
+  ) => void;
   currentCandidateApp?: CandidateApplication;
 
   // Candidate Documents management (Bac, Notes, Diplômes, CIN)
   documents: CandidateDocument[];
-  uploadCandidateDocument: (type: DocumentType, fileName: string, fileSize?: string) => void;
+  uploadCandidateDocument: (
+    type: DocumentType,
+    fileName: string,
+    fileSize?: string,
+    dataUrl?: string,
+    captureMethod?: 'camera' | 'upload'
+  ) => void;
   deleteCandidateDocument: (docId: string) => void;
 
   // Re-registrations
@@ -77,33 +102,26 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Helper for automatic role detection based on institutional email
-export function resolveRoleFromEmail(email: string, users: User[]): Role {
+export function resolveRoleFromEmail(email: string, users?: User[]): Role {
   const normalized = email.trim().toLowerCase();
 
-  // 1. Check if user already exists in directory
-  const existing = users.find((u) => u.email.toLowerCase() === normalized);
-  if (existing) {
-    // Normalize aliases
-    if (existing.role === 'supervisor') return 'directeur_these';
-    if (existing.role === 'structure_director') return 'directeur_structure';
-    if (existing.role === 'candidate') return 'candidat';
-    return existing.role;
-  }
-
-  // 2. Pattern detection for Direction de Structure / Admin
+  // 1. Pattern detection for Direction de Structure / Admin (CED, Doyen, Présidence, Labo)
   if (
     normalized.includes('structure') ||
     normalized.includes('ced') ||
     normalized.includes('admin') ||
     normalized.includes('direction') ||
+    normalized.includes('director.structure') ||
     normalized.includes('doyen') ||
     normalized.includes('president') ||
-    normalized.includes('labo')
+    normalized.includes('labo') ||
+    normalized.includes('pole') ||
+    normalized.includes('laboratoire')
   ) {
     return 'directeur_structure';
   }
 
-  // 3. Pattern detection for Directeurs de thèse / Professeurs / Supervisors
+  // 2. Pattern detection for Directeurs de thèse / Professeurs / Supervisors / Encadrants
   if (
     normalized.includes('supervisor') ||
     normalized.includes('these') ||
@@ -111,12 +129,26 @@ export function resolveRoleFromEmail(email: string, users: User[]): Role {
     normalized.includes('encadrant') ||
     normalized.includes('prof') ||
     normalized.startsWith('pr.') ||
+    normalized.startsWith('pr_') ||
     normalized.startsWith('dr.') ||
+    normalized.startsWith('dr_') ||
     normalized.includes('bennani') ||
     normalized.includes('chami') ||
-    normalized.includes('directeur')
+    normalized.includes('directeur') ||
+    normalized.includes('enseignant')
   ) {
     return 'directeur_these';
+  }
+
+  // 3. Check if user already exists in directory (if provided)
+  if (users) {
+    const existing = users.find((u) => u.email.toLowerCase() === normalized);
+    if (existing) {
+      if (existing.role === 'supervisor') return 'directeur_these';
+      if (existing.role === 'structure_director') return 'directeur_structure';
+      if (existing.role === 'candidate') return 'candidat';
+      return existing.role;
+    }
   }
 
   // 4. Default for all candidate / student emails
@@ -238,14 +270,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return resolveRoleFromEmail(email, registeredUsers);
   };
 
-  // Login with institutional email - automatically grants role
-  const loginWithEmail = (email: string) => {
+  // Login with institutional email - automatically grants role (or honors explicit role selection)
+  const loginWithEmail = (email: string, explicitRole?: Role) => {
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes('@')) {
       return { success: false, role: 'candidat' as Role, message: 'Veuillez saisir une adresse email valide.' };
     }
 
-    const determinedRole = resolveRoleFromEmail(normalized, registeredUsers);
+    let determinedRole = explicitRole || resolveRoleFromEmail(normalized, registeredUsers);
+    if (determinedRole === 'supervisor') determinedRole = 'directeur_these';
+    if (determinedRole === 'structure_director') determinedRole = 'directeur_structure';
+    if (determinedRole === 'candidate') determinedRole = 'candidat';
+
     let matchedUser = registeredUsers.find((u) => u.email.toLowerCase() === normalized);
 
     if (!matchedUser) {
@@ -262,15 +298,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         email: normalized,
         role: determinedRole,
         establishment: 'FST Fès',
-        laboratory: determinedRole === 'directeur_these' ? 'Laboratoire LISAC' : undefined,
+        laboratory:
+          determinedRole === 'directeur_these'
+            ? 'Laboratoire LISAC'
+            : determinedRole === 'directeur_structure'
+            ? 'Centre d’Études Doctorales (CED)'
+            : undefined,
       };
 
       setRegisteredUsers((prev) => [...prev, matchedUser!]);
+    } else {
+      // Synchronize existing user role if different
+      if (matchedUser.role !== determinedRole) {
+        matchedUser = { ...matchedUser, role: determinedRole };
+        setRegisteredUsers((prev) =>
+          prev.map((u) => (u.id === matchedUser!.id ? matchedUser! : u))
+        );
+      }
     }
 
     setCurrentUser(matchedUser);
     setCurrentView('dashboard');
-    showToast(`Connexion réussie. Rôle attribué automatiquement : ${getRoleLabel(determinedRole)}`);
+    showToast(`Connexion réussie : ${getRoleLabel(determinedRole)}`);
     return { success: true, role: determinedRole, message: 'Connexion réussie' };
   };
 
@@ -417,29 +466,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Applications
-  const addApplication = (topicId: string, notes?: string, activityReport?: string) => {
+  const addApplication = (
+    topicId: string,
+    notes?: string,
+    activityReport?: string,
+    details?: {
+      nom?: string;
+      prenom?: string;
+      phone?: string;
+      cin?: string;
+      email?: string;
+      etablissementOrigine?: string;
+      diplomeOrigine?: string;
+    }
+  ) => {
     if (!currentUser) return;
 
     const targetTopic = topics.find((t) => t.id === topicId);
     if (!targetTopic) return;
 
+    const candidateEmail = details?.email || currentUser.email;
     const alreadyApplied = applications.some(
-      (a) => a.topicId === topicId && a.candidateEmail === currentUser.email
+      (a) => a.topicId === topicId && a.candidateEmail.toLowerCase() === candidateEmail.toLowerCase()
     );
     if (alreadyApplied) {
       showToast('Vous avez déjà postulé à ce sujet de thèse.');
       return;
     }
 
+    const candidateName = details?.nom && details?.prenom
+      ? `${details.prenom.trim()} ${details.nom.trim()}`
+      : currentUser.name;
+
     const newApp: CandidateApplication = {
       id: `app-${Date.now().toString(36)}`,
       topicId: targetTopic.id,
       topicTitle: targetTopic.title,
       candidateId: currentUser.id,
-      candidateName: currentUser.name,
-      candidateEmail: currentUser.email,
-      candidatePhone: currentUser.phone,
-      candidateCin: currentUser.cin,
+      candidateName,
+      candidateEmail,
+      candidatePhone: details?.phone || currentUser.phone,
+      candidateCin: details?.cin || currentUser.cin,
+      etablissementOrigine: details?.etablissementOrigine || currentUser.etablissementOrigine || 'Université Sidi Mohamed Ben Abdellah',
+      diplomeOrigine: details?.diplomeOrigine || currentUser.diplomeOrigine || 'Master de Recherche',
       establishment: targetTopic.establishment,
       laboratory: targetTopic.laboratory,
       supervisorName: targetTopic.supervisorName,
@@ -448,10 +517,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentStep: 1, // Step 1: Dossier soumis
       submittedDate: new Date().toISOString().split('T')[0],
       notes: notes || 'Candidature initiale transmise avec succès.',
-      activityReport: activityReport || 'Dossier de candidature initial et projet préliminaire.',
+      activityReport: activityReport || 'Dossier de candidature initial et projet de recherche préliminaire.',
     };
 
     setApplications((prev) => [newApp, ...prev]);
+
+    // Update currentUser profile if new details were provided
+    if (details?.phone || details?.cin || details?.etablissementOrigine || details?.diplomeOrigine) {
+      setCurrentUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              phone: details.phone || prev.phone,
+              cin: details.cin || prev.cin,
+              name: candidateName,
+              etablissementOrigine: details.etablissementOrigine || prev.etablissementOrigine,
+              diplomeOrigine: details.diplomeOrigine || prev.diplomeOrigine,
+            }
+          : prev
+      );
+    }
 
     // Update slots
     setTopics((prev) =>
@@ -484,7 +569,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     appId: string,
     step: ApplicationStep,
     status: ApplicationStatus,
-    notes?: string
+    notes?: string,
+    feedback?: string
   ) => {
     setApplications((prev) =>
       prev.map((a) =>
@@ -494,6 +580,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               currentStep: step,
               status,
               notes: notes || a.notes,
+              supervisorFeedback: feedback !== undefined ? feedback : a.supervisorFeedback,
             }
           : a
       )
@@ -501,8 +588,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(`Dossier candidat mis à jour : Étape ${step}`);
   };
 
-  // Documents management
-  const uploadCandidateDocument = (type: DocumentType, fileName: string, fileSize = '1.8 Mo') => {
+  // Documents management with webcam scan and upload support
+  const uploadCandidateDocument = (
+    type: DocumentType,
+    fileName: string,
+    fileSize = '1.8 Mo',
+    dataUrl?: string,
+    captureMethod: 'camera' | 'upload' = 'upload'
+  ) => {
     if (!currentUser) return;
 
     const titles: Record<DocumentType, string> = {
@@ -521,17 +614,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       uploadedAt: new Date().toISOString().split('T')[0],
       fileSize,
       status: 'valide',
+      dataUrl,
+      captureMethod,
     };
 
     setDocuments((prev) => {
       // Replace existing document of same type or add
       const filtered = prev.filter(
-        (d) => !(d.candidateEmail === currentUser.email && d.type === type)
+        (d) => !(d.candidateEmail.toLowerCase() === currentUser.email.toLowerCase() && d.type === type)
       );
       return [newDoc, ...filtered];
     });
 
-    showToast(`Pièce justificative téléversée : ${titles[type]}`);
+    showToast(`Pièce justificative ${captureMethod === 'camera' ? 'scannée par caméra' : 'téléversée'} : ${titles[type]}`);
   };
 
   const deleteCandidateDocument = (docId: string) => {

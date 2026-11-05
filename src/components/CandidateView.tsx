@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { ThesisTopic, DocumentType, ApplicationStep } from '../types';
+import { ThesisTopic, DocumentType, ApplicationStep, ApplicationStatus } from '../types';
 import {
   Search,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   Check,
   FileText,
   Upload,
+  Camera,
   Trash2,
   RefreshCw,
   CreditCard,
@@ -15,8 +16,11 @@ import {
   FileCheck,
   Building2,
   ChevronRight,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
+import { DocumentScannerModal } from './DocumentScannerModal';
 
 interface CandidateViewProps {
   onOpenApply: (topic: ThesisTopic) => void;
@@ -41,6 +45,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   const [selectedEstablishment, setSelectedEstablishment] = useState<string>('Tous');
   const [activeTab, setActiveTab] = useState<'catalogue' | 'suivi' | 'documents'>('catalogue');
 
+  // Scanner modal state
+  const [scanningDocType, setScanningDocType] = useState<DocumentType | null>(null);
+  const [scanningDocTitle, setScanningDocTitle] = useState<string>('');
+
   // Confirmation state for deleting application
   const [confirmDeleteAppId, setConfirmDeleteAppId] = useState<string | null>(null);
 
@@ -61,14 +69,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     });
   }, [topics, searchQuery, selectedEstablishment]);
 
-  // Steps definition for the 5-step progress bar:
-  // Dossier soumis ➔ Validation structure ➔ Sélection ➔ Entretien ➔ Admis
+  // Exact 5-step progress bar as required:
+  // Dossier soumis ➔ Pièces validées ➔ Avis Directeur ➔ Validation Structure ➔ Admis
   const PROGRESS_STEPS: { step: ApplicationStep; label: string; desc: string }[] = [
-    { step: 1, label: 'Dossier soumis', desc: 'Dépôt des pièces initial' },
-    { step: 2, label: 'Validation structure', desc: 'Conformité labo/structure' },
-    { step: 3, label: 'Sélection', desc: 'Présélection sur dossier' },
-    { step: 4, label: 'Entretien', desc: 'Audition devant jury' },
-    { step: 5, label: 'Admis', desc: 'Inscription définitive validée' },
+    { step: 1, label: 'Dossier soumis', desc: 'Dépôt des informations et pièces' },
+    { step: 2, label: 'Pièces validées', desc: 'Conformité administrative des scans' },
+    { step: 3, label: 'Avis Directeur', desc: 'Évaluation pédagogique du directeur' },
+    { step: 4, label: 'Validation Structure', desc: 'Approbation laboratoire et CED' },
+    { step: 5, label: 'Admis', desc: 'Inscription doctorale validée' },
   ];
 
   const currentStep: number = currentCandidateApp?.currentStep || 0;
@@ -78,19 +86,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     {
       type: 'baccalaureat',
       label: 'Baccalauréat',
-      description: 'Copie certifiée conforme du diplôme de baccalauréat',
+      description: 'Copie certifiée ou scan net du diplôme du Baccalauréat',
       icon: GraduationCap,
     },
     {
       type: 'releve_notes',
-      label: 'Fiches de notes',
-      description: 'Relevés de notes de Licence et Master',
+      label: 'Fiches et Relevés de Notes',
+      description: 'Relevés de notes officiels de Licence et Master',
       icon: FileText,
     },
     {
       type: 'diplomes',
       label: 'Diplômes universitaires',
-      description: 'Attestations & diplômes de Licence et Master / Ingénieur',
+      description: 'Diplômes ou attestations de réussite (Licence, Master / Ingénieur)',
       icon: FileCheck,
     },
     {
@@ -101,12 +109,20 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     },
   ];
 
-  const handleSimulateUpload = (type: DocumentType, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const sizeStr = `${(file.size / (1024 * 1024)).toFixed(1)} Mo`;
-      uploadCandidateDocument(type, file.name, sizeStr);
-    }
+  const openScanner = (type: DocumentType, title: string) => {
+    setScanningDocType(type);
+    setScanningDocTitle(title);
+  };
+
+  const handleSaveScannedDocument = (
+    type: DocumentType,
+    fileName: string,
+    fileSize: string,
+    dataUrl: string,
+    method: 'camera' | 'upload'
+  ) => {
+    uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
+    setScanningDocType(null);
   };
 
   return (
@@ -145,7 +161,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={onOpenReReg}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap shadow-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Déposer réinscription</span>
@@ -192,7 +208,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           >
             <span>3. Gestion des Documents (Scans)</span>
             <span className="px-1.5 py-0.5 text-[10px] bg-neutral-100 rounded-md font-mono text-neutral-700">
-              {documents.filter((d) => d.candidateEmail === currentUser?.email).length}/4
+              {documents.filter((d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()).length}/4
             </span>
           </button>
         </div>
@@ -270,7 +286,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               <div className="divide-y divide-neutral-200 border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                 {filteredTopics.map((topic) => {
                   const alreadyApplied = applications.some(
-                    (a) => a.topicId === topic.id && a.candidateEmail === currentUser?.email
+                    (a) => a.topicId === topic.id && a.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()
                   );
                   const isAvailable = topic.slotsTaken < topic.slotsTotal && topic.status !== 'cloture';
 
@@ -321,7 +337,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                             onClick={() => onOpenApply(topic)}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
                           >
-                            <span>Postuler en 1 clic</span>
+                            <span>Postuler au sujet</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
@@ -342,6 +358,28 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         <div className="space-y-6 sm:space-y-8">
           {currentCandidateApp ? (
             <div className="p-4 sm:p-6 md:p-8 border border-neutral-200 rounded-2xl bg-white space-y-6 sm:space-y-8 shadow-xs">
+              {/* Alert: Demande de correction si nécessaire */}
+              {currentCandidateApp.status === 'a_corriger' && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Correction demandée par votre directeur de thèse :</span>
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed pl-6">
+                    "{currentCandidateApp.supervisorFeedback || currentCandidateApp.notes || 'Veuillez vérifier et renouveler vos pièces justificatives.'}"
+                  </p>
+                  <div className="pl-6 pt-1">
+                    <button
+                      onClick={() => setActiveTab('documents')}
+                      className="px-3 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Mettre à jour les pièces scannées</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Header with Title and Delete action */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-neutral-100 pb-5">
                 <div className="space-y-1.5">
@@ -398,11 +436,11 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Progress Bar: Flawless Responsive Mobile & Desktop Layout */}
+              {/* Progress Bar: Exact 5 Official Steps */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                    Progression du dossier (ProgressBar)
+                    Progression du dossier (5 Étapes Clés)
                   </h3>
                   <span className="text-xs font-medium text-neutral-600">
                     Étape actuelle : <strong className="text-neutral-900">{PROGRESS_STEPS[currentStep - 1]?.label || 'En cours'}</strong> ({currentStep}/5)
@@ -512,15 +550,50 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Status Note or Next Action */}
-              <div className="p-3.5 sm:p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1">
-                <div className="text-xs font-bold text-neutral-900 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Détail et observations de la commission :</span>
+              {/* Pedagogical Remarks Box */}
+              {currentCandidateApp.supervisorFeedback && (
+                <div className="p-3.5 sm:p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1">
+                  <div className="text-xs font-bold text-neutral-900 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Avis du Directeur de thèse :</span>
+                  </div>
+                  <p className="text-xs text-neutral-600 leading-relaxed pl-6">
+                    {currentCandidateApp.supervisorFeedback}
+                  </p>
                 </div>
-                <p className="text-xs text-neutral-600 leading-relaxed pl-6">
-                  {currentCandidateApp.notes || 'Votre dossier est en cours d’examen institutionnel par la commission doctorale.'}
-                </p>
+              )}
+
+              {/* Responsive Summary Table */}
+              <div className="space-y-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+                  Fiche synthétique du dossier
+                </div>
+                <div className="overflow-x-auto border border-neutral-200 rounded-xl bg-white shadow-xs">
+                  <table className="w-full text-left text-xs min-w-[580px]">
+                    <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 font-semibold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-3.5">Intitulé Thèse</th>
+                        <th className="py-2.5 px-3.5">Établissement & Labo</th>
+                        <th className="py-2.5 px-3.5">Directeur</th>
+                        <th className="py-2.5 px-3.5">Étape</th>
+                        <th className="py-2.5 px-3.5">Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-3 px-3.5 font-bold text-neutral-900 max-w-xs">{currentCandidateApp.topicTitle}</td>
+                        <td className="py-3 px-3.5 text-neutral-700">{currentCandidateApp.establishment} · {currentCandidateApp.laboratory}</td>
+                        <td className="py-3 px-3.5 font-medium text-neutral-800">{currentCandidateApp.supervisorName}</td>
+                        <td className="py-3 px-3.5 font-semibold text-neutral-900">Étape {currentCandidateApp.currentStep}/5</td>
+                        <td className="py-3 px-3.5">
+                          <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 capitalize">
+                            {currentCandidateApp.status.replace('_', ' ')}
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ) : (
@@ -606,108 +679,137 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* TAB 3: GESTION ET SCAN DES DOCUMENTS */}
+      {/* TAB 3: GESTION ET SCAN DES DOCUMENTS (Webcam / Upload) */}
       {activeTab === 'documents' && (
         <div className="space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-base font-bold text-neutral-900">
-              Pièces justificatives obligatoires (Scans & Dépôts)
-            </h2>
-            <p className="text-xs text-neutral-500">
-              Téléversez ou scannez vos pièces au format PDF ou image (max 10 Mo par document).
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold text-neutral-900">
+                Pièces justificatives obligatoires (Scans & Dépôts)
+              </h2>
+              <p className="text-xs text-neutral-500">
+                Scannez directement vos pièces avec votre caméra/webcam ou téléversez vos fichiers PDF/images.
+              </p>
+            </div>
+            <div className="text-xs font-semibold text-neutral-700 bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-200 self-start sm:self-auto">
+              {documents.filter((d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()).length} / 4 pièces certifiées
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {REQUIRED_DOCS.map((req) => {
               const uploadedDoc = documents.find(
-                (d) => d.candidateEmail === currentUser?.email && d.type === req.type
+                (d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase() && d.type === req.type
               );
               const IconComp = req.icon;
 
               return (
                 <div
                   key={req.type}
-                  className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white space-y-4 hover:border-neutral-300 transition-colors shadow-xs"
+                  className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white space-y-4 hover:border-neutral-300 transition-colors shadow-xs flex flex-col justify-between"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
-                        <IconComp className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-bold text-neutral-900">{req.label}</h3>
-                        <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">
-                          {req.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {uploadedDoc ? (
-                    <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono text-neutral-900 font-medium truncate max-w-[180px] sm:max-w-[220px]">
-                          {uploadedDoc.fileName}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 shrink-0">
-                          <Check className="w-3 h-3" />
-                          <span>Déposé ({uploadedDoc.fileSize})</span>
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500 border-t border-neutral-200">
-                        <span>{uploadedDoc.uploadedAt}</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              openAttachment({
-                                title: uploadedDoc.title,
-                                subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
-                                content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
-                                author: currentUser?.name || 'Candidat',
-                                date: uploadedDoc.uploadedAt,
-                              })
-                            }
-                            className="text-neutral-900 font-semibold underline"
-                          >
-                            Prévisualiser
-                          </button>
-                          <span>·</span>
-                          <button
-                            onClick={() => deleteCandidateDocument(uploadedDoc.id)}
-                            className="text-rose-600 hover:text-rose-700 font-medium"
-                          >
-                            Remplacer
-                          </button>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold text-neutral-900">{req.label}</h3>
+                          <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">
+                            {req.description}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="relative">
-                      <label className="flex flex-col items-center justify-center p-4 border border-dashed border-neutral-300 rounded-xl bg-white hover:bg-neutral-50 transition-colors cursor-pointer group">
-                        <Upload className="w-5 h-5 text-neutral-400 group-hover:text-neutral-900 transition-colors" />
-                        <span className="text-xs font-semibold text-neutral-800 mt-2">
-                          Importer ou scanner la pièce
-                        </span>
-                        <span className="text-[10px] text-neutral-400 mt-0.5">
-                          PDF ou image haute résolution
-                        </span>
-                        <input
-                          type="file"
-                          accept=".pdf,image/*"
-                          className="sr-only"
-                          onChange={(e) => handleSimulateUpload(req.type, e)}
-                        />
-                      </label>
+
+                    {uploadedDoc && (
+                      <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono text-neutral-900 font-medium truncate max-w-[180px] sm:max-w-[220px]">
+                            {uploadedDoc.fileName}
+                          </span>
+                          <span className="text-[11px] text-emerald-700 font-semibold flex items-center gap-1 shrink-0">
+                            <Check className="w-3 h-3" />
+                            <span>Déposé ({uploadedDoc.fileSize})</span>
+                          </span>
+                        </div>
+
+                        {uploadedDoc.captureMethod === 'camera' && (
+                          <div className="text-[10px] text-neutral-500 flex items-center gap-1">
+                            <Camera className="w-3 h-3 text-neutral-400" />
+                            <span>Numérisé par webcam / appareil mobile</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between pt-1 text-[11px] text-neutral-500 border-t border-neutral-200">
+                          <span>{uploadedDoc.uploadedAt}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() =>
+                                openAttachment({
+                                  title: uploadedDoc.title,
+                                  subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
+                                  content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                  author: currentUser?.name || 'Candidat',
+                                  date: uploadedDoc.uploadedAt,
+                                })
+                              }
+                              className="text-neutral-900 font-semibold underline flex items-center gap-1"
+                            >
+                              <span>Voir le scan</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </button>
+                            <span>·</span>
+                            <button
+                              onClick={() => deleteCandidateDocument(uploadedDoc.id)}
+                              className="text-rose-600 hover:text-rose-700 font-medium"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions to Scan or Upload */}
+                  <div className="pt-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openScanner(req.type, req.label)}
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-semibold text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded-xl transition-colors border border-neutral-200"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-neutral-700" />
+                        <span>Scanner direct</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openScanner(req.type, req.label)}
+                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 rounded-xl transition-colors shadow-xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Téléverser</span>
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
       )}
+
+      {/* Interactive Document Scanner Modal */}
+      <DocumentScannerModal
+        isOpen={scanningDocType !== null}
+        docType={scanningDocType}
+        docTitle={scanningDocTitle}
+        onClose={() => setScanningDocType(null)}
+        onSave={handleSaveScannedDocument}
+      />
     </div>
   );
 };

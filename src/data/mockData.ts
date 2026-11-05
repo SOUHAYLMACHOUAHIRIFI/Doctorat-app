@@ -197,11 +197,11 @@ export const INITIAL_APPLICATIONS: CandidateApplication[] = [
     laboratory: 'Laboratoire LISAC',
     supervisorName: 'Pr. Karim Bennani',
     supervisorId: 'user-prof-1',
-    status: 'selection',
-    currentStep: 3, // Step 3: Sélection
+    status: 'avis_directeur',
+    currentStep: 3, // Step 3: Avis Directeur
     submittedDate: '2026-10-20',
     activityReport: 'Dossier Master en Intelligence Artificielle et Systèmes Embarqués.',
-    notes: 'Validation structure effectuée avec mention très honorable. Dossier présélectionné pour l’entretien oral.',
+    notes: 'Validation structure effectuée avec mention très honorable. Avis favorable du directeur de thèse émis.',
   },
   {
     id: 'app-02',
@@ -216,8 +216,8 @@ export const INITIAL_APPLICATIONS: CandidateApplication[] = [
     laboratory: 'Lab. Biotechnologie & Valorisation',
     supervisorName: 'Pr. Karim Bennani',
     supervisorId: 'user-prof-1',
-    status: 'validation_structure',
-    currentStep: 2, // Step 2: Validation structure
+    status: 'pieces_validees',
+    currentStep: 2, // Step 2: Pièces validées
     submittedDate: '2026-10-28',
     activityReport: 'Projet de recherche sur les bio-procédés régionaux.',
     notes: 'Dossier complet transmis pour validation formelle de la structure.',

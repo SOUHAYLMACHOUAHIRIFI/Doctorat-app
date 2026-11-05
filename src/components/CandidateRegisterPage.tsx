@@ -23,13 +23,8 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
 
     // Validation
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail.includes('@')) {
-      setError('Veuillez saisir une adresse email académique valide.');
-      return;
-    }
-
-    if (!cleanEmail.endsWith('@usmba.ac.ma') && !cleanEmail.endsWith('.ma') && !cleanEmail.endsWith('.edu')) {
-      setError('L’adresse email doit être une adresse académique institutionnelle (ex: prenom.nom@usmba.ac.ma).');
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setError('Veuillez saisir une adresse email valide.');
       return;
     }
 

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ThesisTopic, DocumentType, ApplicationStep, ApplicationStatus } from '../types';
+import { ThesisTopic, DocumentType, ApplicationStep, User } from '../types';
 import {
   Search,
   ArrowRight,
@@ -15,11 +15,15 @@ import {
   GraduationCap,
   FileCheck,
   Building2,
-  ChevronRight,
   AlertCircle,
   ExternalLink,
-  Clock,
-  Award,
+  ShieldCheck,
+  Eye,
+  User as UserIcon,
+  Phone,
+  Mail,
+  Save,
+  Lock,
 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
 import { DocumentScannerModal } from './DocumentScannerModal';
@@ -40,12 +44,29 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     documents,
     uploadCandidateDocument,
     deleteCandidateDocument,
+    updateUserProfile,
     openAttachment,
+    showToast,
   } = useApp();
 
+  // Wizard Tab: 1. documents & profil -> 2. catalogue -> 3. suivi
+  const [activeStep, setActiveStep] = useState<'documents' | 'catalogue' | 'suivi'>('documents');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEstablishment, setSelectedEstablishment] = useState<string>('Tous');
-  const [activeTab, setActiveTab] = useState<'catalogue' | 'suivi' | 'documents'>('catalogue');
+
+  // Candidate Profile form state in Step 1
+  const [profileNom, setProfileNom] = useState(currentUser?.lastName || currentUser?.name?.split(' ').slice(1).join(' ') || '');
+  const [profilePrenom, setProfilePrenom] = useState(currentUser?.firstName || currentUser?.name?.split(' ')[0] || '');
+  const [profileCin, setProfileCin] = useState(currentUser?.cin || '');
+  const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
+  const [profileEmail, setProfileEmail] = useState(currentUser?.email || '');
+  const [profileEstablishment, setProfileEstablishment] = useState(
+    currentUser?.etablissementOrigine || currentUser?.establishment || 'FST Fès'
+  );
+  const [profileDiplome, setProfileDiplome] = useState(
+    currentUser?.diplomeOrigine || 'Master de Recherche en Informatique & IA'
+  );
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Scanner modal state
   const [scanningDocType, setScanningDocType] = useState<DocumentType | null>(null);
@@ -53,6 +74,71 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
   // Confirmation state for deleting application
   const [confirmDeleteAppId, setConfirmDeleteAppId] = useState<string | null>(null);
+
+  // Mandatory 4 document requirements (Baccalauréat, Relevés de notes, Diplôme, CIN)
+  const REQUIRED_DOCS: { type: DocumentType; label: string; description: string; icon: any }[] = [
+    {
+      type: 'baccalaureat',
+      label: 'Baccalauréat',
+      description: 'Diplôme du Baccalauréat certifié conforme',
+      icon: GraduationCap,
+    },
+    {
+      type: 'releve_notes',
+      label: 'Relevés de notes universitaires',
+      description: 'Relevés de notes officiels de Licence et Master',
+      icon: FileText,
+    },
+    {
+      type: 'diplomes',
+      label: 'Diplôme (Licence / Master / Ingénieur)',
+      description: 'Attestations & Diplômes universitaires',
+      icon: FileCheck,
+    },
+    {
+      type: 'cin',
+      label: 'Carte d’Identité Nationale (CIN)',
+      description: 'Scan recto/verso net de la CIN en cours de validité',
+      icon: CreditCard,
+    },
+  ];
+
+  // User documents
+  const candidateDocs = useMemo(() => {
+    if (!currentUser) return [];
+    return documents.filter(
+      (d) => d.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
+    );
+  }, [documents, currentUser]);
+
+  const candidateDocsCount = candidateDocs.length;
+  const isDossierComplet = candidateDocsCount >= 4;
+
+  // Sync profile fields if currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setProfileNom(currentUser.lastName || currentUser.name.split(' ').slice(1).join(' ') || '');
+      setProfilePrenom(currentUser.firstName || currentUser.name.split(' ')[0] || '');
+      setProfileCin(currentUser.cin || '');
+      setProfilePhone(currentUser.phone || '');
+      setProfileEmail(currentUser.email || '');
+      setProfileEstablishment(currentUser.etablissementOrigine || currentUser.establishment || 'FST Fès');
+      setProfileDiplome(currentUser.diplomeOrigine || 'Master de Recherche en Informatique & IA');
+    }
+  }, [currentUser]);
+
+  // Initial step management
+  useEffect(() => {
+    if (!currentUser) {
+      setActiveStep('catalogue');
+    } else if (!isDossierComplet) {
+      setActiveStep('documents');
+    } else if (currentCandidateApp) {
+      setActiveStep('suivi');
+    } else {
+      setActiveStep('catalogue');
+    }
+  }, [currentUser, isDossierComplet, currentCandidateApp]);
 
   // Filter topics
   const filteredTopics = useMemo(() => {
@@ -71,55 +157,52 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     });
   }, [topics, searchQuery, selectedEstablishment]);
 
-  // Exact 5 progression steps according to requirements:
-  // Dossier déposé ➔ Scan validé ➔ Évaluation Directeur ➔ Validation Structure ➔ Décision finale
+  // Exact 5 Progression Steps requested:
+  // 1. Pièces scannées ➔ 2. Candidature soumise ➔ 3. Évaluation Directeur ➔ 4. Validation Structure ➔ 5. Admission
   const PROGRESS_STEPS: { step: ApplicationStep; label: string; desc: string }[] = [
-    { step: 1, label: '1. Dossier déposé', desc: 'Sujet et informations enregistrés' },
-    { step: 2, label: '2. Scan validé', desc: '4 pièces numérisées et certifiées' },
-    { step: 3, label: '3. Évaluation Directeur', desc: 'Avis motivé du directeur de thèse' },
-    { step: 4, label: '4. Validation Structure', desc: 'Approbation du conseil du CED' },
-    { step: 5, label: '5. Décision finale', desc: 'Inscription doctorale validée' },
+    { step: 1, label: '1. Pièces scannées', desc: '4 pièces numérisées et certifiées' },
+    { step: 2, label: '2. Candidature soumise', desc: 'Dossier transmis au directeur de thèse' },
+    { step: 3, label: '3. Évaluation Directeur', desc: 'Avis motivé et appréciation pédagogique' },
+    { step: 4, label: '4. Validation Structure', desc: 'Examen par la commission CED' },
+    { step: 5, label: '5. Admission', desc: 'Inscription doctorale définitive validée' },
   ];
 
-  // Dynamic step computation based on candidate documents and approvals
-  const candidateDocsCount = documents.filter(
-    (d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()
-  ).length;
-
+  // Current step calculation:
+  // If candidate has an active application, currentStep is between 2 and 5.
   let currentStep: number = currentCandidateApp?.currentStep || 0;
   if (currentCandidateApp) {
-    if (currentCandidateApp.currentStep === 1 && candidateDocsCount >= 4) {
-      currentStep = 2; // Scan validé
+    if (currentCandidateApp.currentStep === 1) {
+      currentStep = isDossierComplet ? 2 : 1;
     }
   }
 
-  // Documents mandatory types
-  const REQUIRED_DOCS: { type: DocumentType; label: string; description: string; icon: any }[] = [
-    {
-      type: 'baccalaureat',
-      label: 'Baccalauréat',
-      description: 'Diplôme du Baccalauréat certifié',
-      icon: GraduationCap,
-    },
-    {
-      type: 'releve_notes',
-      label: 'Fiches et Relevés de Notes',
-      description: 'Relevés de notes universitaires de Licence et Master',
-      icon: FileText,
-    },
-    {
-      type: 'diplomes',
-      label: 'Diplômes universitaires',
-      description: 'Diplômes ou attestations (Licence, Master / Ingénieur)',
-      icon: FileCheck,
-    },
-    {
-      type: 'cin',
-      label: 'Carte Nationale (CIN)',
-      description: 'Scan recto/verso net de la CIN en cours de validité',
-      icon: CreditCard,
-    },
-  ];
+  const handleProfileSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileNom.trim() || !profilePrenom.trim()) {
+      showToast('Le nom et le prénom sont obligatoires.');
+      return;
+    }
+    if (!profileCin.trim()) {
+      showToast('Le code CIN est obligatoire.');
+      return;
+    }
+    if (!profilePhone.trim()) {
+      showToast('Le numéro de téléphone est obligatoire.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    updateUserProfile({
+      name: `${profilePrenom.trim()} ${profileNom.trim()}`,
+      firstName: profilePrenom.trim(),
+      lastName: profileNom.trim(),
+      cin: profileCin.trim().toUpperCase(),
+      phone: profilePhone.trim(),
+      etablissementOrigine: profileEstablishment,
+      diplomeOrigine: profileDiplome.trim(),
+    });
+    setIsSavingProfile(false);
+  };
 
   const openScanner = (type: DocumentType, title: string) => {
     setScanningDocType(type);
@@ -137,6 +220,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     setScanningDocType(null);
   };
 
+  const handleTopicApplyAttempt = (topic: ThesisTopic) => {
+    if (!currentUser) {
+      onOpenApply(topic);
+      return;
+    }
+    if (!isDossierComplet) {
+      showToast('Étape 1 obligatoire : Veuillez d’abord numériser ou importer vos 4 documents.');
+      setActiveStep('documents');
+      return;
+    }
+    onOpenApply(topic);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 bg-white text-neutral-900">
       {/* Candidate Profile Header Card */}
@@ -144,8 +240,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         <div className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md border border-neutral-200">
-                Espace Candidat Doctorant
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-800 bg-neutral-100 px-2 py-0.5 rounded-md border border-neutral-200">
+                Espace Candidat Doctorat
               </span>
               <span className="text-neutral-300">·</span>
               <span className="text-xs text-neutral-600 font-mono truncate max-w-[220px] sm:max-w-none">
@@ -157,12 +253,16 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
               {currentUser.cin && (
-                <span>CIN : <strong className="font-mono text-neutral-800">{currentUser.cin}</strong></span>
+                <span>
+                  CIN : <strong className="font-mono text-neutral-800">{currentUser.cin}</strong>
+                </span>
               )}
               {currentUser.phone && (
                 <>
                   <span className="text-neutral-300 hidden sm:inline">·</span>
-                  <span>Tél : <strong className="font-mono text-neutral-800">{currentUser.phone}</strong></span>
+                  <span>
+                    Tél : <strong className="font-mono text-neutral-800">{currentUser.phone}</strong>
+                  </span>
                 </>
               )}
               <span className="text-neutral-300 hidden sm:inline">·</span>
@@ -173,63 +273,568 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={onOpenReReg}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap shadow-xs"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap shadow-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Déposer réinscription</span>
+              <span>Réinscription annuelle</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Sub-Tabs */}
-      <div className="border-b border-neutral-200 overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-4 sm:gap-8 min-w-max pb-3 text-xs sm:text-sm">
+      {/* CHRONOLOGICAL CANDIDATE WIZARD STEPS NAVIGATION */}
+      <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-2 sm:p-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          {/* STEP 1: PROFIL & SCAN DES PIÈCES OBLIGATOIRES (EN PREMIER) */}
           <button
-            onClick={() => setActiveTab('catalogue')}
-            className={`font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
-              activeTab === 'catalogue'
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-500 hover:text-neutral-900'
+            type="button"
+            onClick={() => setActiveStep('documents')}
+            className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+              activeStep === 'documents'
+                ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                : isDossierComplet
+                ? 'bg-white text-neutral-900 border-neutral-200 hover:border-neutral-300'
+                : 'bg-white text-neutral-800 border-amber-300 hover:border-neutral-300'
             }`}
           >
-            1. Recherche de Sujets
-          </button>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                  activeStep === 'documents'
+                    ? 'bg-white text-neutral-900'
+                    : isDossierComplet
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                {isDossierComplet ? <Check className="w-3.5 h-3.5" /> : '1'}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold truncate">Étape 1 : Profil & 4 Pièces</div>
+                <div
+                  className={`text-[10px] truncate ${
+                    activeStep === 'documents' ? 'text-neutral-300' : 'text-neutral-500'
+                  }`}
+                >
+                  {isDossierComplet ? 'Pièces 4/4 certifiées' : 'Obligatoire en premier'}
+                </div>
+              </div>
+            </div>
 
-          <button
-            onClick={() => setActiveTab('suivi')}
-            className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
-              activeTab === 'suivi'
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-500 hover:text-neutral-900'
-            }`}
-          >
-            <span>2. Ma Candidature & Progression</span>
-            {currentCandidateApp && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('documents')}
-            className={`flex items-center gap-2 font-semibold tracking-tight transition-colors pb-3 -mb-3.5 border-b-2 whitespace-nowrap ${
-              activeTab === 'documents'
-                ? 'border-neutral-900 text-neutral-900'
-                : 'border-transparent text-neutral-500 hover:text-neutral-900'
-            }`}
-          >
-            <span>3. Mes Pièces Justificatives (4 Scans)</span>
-            <span className="px-1.5 py-0.5 text-[10px] bg-neutral-100 rounded-md font-mono text-neutral-700">
-              {documents.filter((d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()).length}/4
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
+                activeStep === 'documents'
+                  ? 'bg-white/20 text-white'
+                  : isDossierComplet
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+              }`}
+            >
+              {candidateDocsCount}/4 pièces
             </span>
+          </button>
+
+          {/* STEP 2: CONSULTATION & RECHERCHE DES SUJETS DE THÈSE */}
+          <button
+            type="button"
+            onClick={() => setActiveStep('catalogue')}
+            className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+              activeStep === 'catalogue'
+                ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                : 'bg-white text-neutral-800 border-neutral-200 hover:border-neutral-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                  activeStep === 'catalogue'
+                    ? 'bg-white text-neutral-900'
+                    : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                2
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold truncate">Étape 2 : Sujets de Thèse</div>
+                <div
+                  className={`text-[10px] truncate ${
+                    activeStep === 'catalogue' ? 'text-neutral-300' : 'text-neutral-500'
+                  }`}
+                >
+                  Recherche & Consultation
+                </div>
+              </div>
+            </div>
+
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
+                activeStep === 'catalogue'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-neutral-100 text-neutral-700'
+              }`}
+            >
+              {filteredTopics.length} sujets
+            </span>
+          </button>
+
+          {/* STEP 3: POSTULATION & SUIVI DE PROGRESSION */}
+          <button
+            type="button"
+            onClick={() => setActiveStep('suivi')}
+            className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
+              activeStep === 'suivi'
+                ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                : 'bg-white text-neutral-800 border-neutral-200 hover:border-neutral-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                  activeStep === 'suivi'
+                    ? 'bg-white text-neutral-900'
+                    : currentCandidateApp
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-neutral-100 text-neutral-700'
+                }`}
+              >
+                {currentCandidateApp ? <Check className="w-3.5 h-3.5" /> : '3'}
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold truncate">Étape 3 : Suivi Progression</div>
+                <div
+                  className={`text-[10px] truncate ${
+                    activeStep === 'suivi' ? 'text-neutral-300' : 'text-neutral-500'
+                  }`}
+                >
+                  {currentCandidateApp ? `Étape ${currentStep}/5` : 'Suivi candidature'}
+                </div>
+              </div>
+            </div>
+
+            {currentCandidateApp && (
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
+                  activeStep === 'suivi'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                }`}
+              >
+                Actif
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {/* TAB 1: RECHERCHE DE SUJETS */}
-      {activeTab === 'catalogue' && (
+      {/* ========================================================================= */}
+      {/* ÉTAPE 1 : PROFIL & SCAN DES PIÈCES OBLIGATOIRES (EN PREMIER) */}
+      {/* ========================================================================= */}
+      {activeStep === 'documents' && (
         <div className="space-y-6">
-          {/* Dynamic Search Bar & Filters */}
+          {/* Status banner with progress bar */}
+          <div
+            className={`p-5 rounded-2xl border transition-all ${
+              isDossierComplet
+                ? 'bg-white border-neutral-200 shadow-xs'
+                : 'bg-amber-50/70 border-amber-200'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  {isDossierComplet ? (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Dossier complet à 100% (4/4 pièces certifiées scannées)</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                      <AlertCircle className="w-4 h-4 text-amber-600" />
+                      <span>Étape 1 obligatoire : Enregistrez votre profil et scannez vos 4 documents</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-neutral-600 leading-relaxed max-w-2xl">
+                  {isDossierComplet
+                    ? 'Vos 4 pièces sont numérisées et certifiées conformes. Vous pouvez maintenant passer à l’Étape 2 pour sélectionner votre sujet de thèse et postuler.'
+                    : 'Avant de pouvoir postuler à un sujet de recherche, le règlement doctoral de l’USMBA exige obligatoirement le scan de vos 4 pièces : Baccalauréat, Relevés de notes, Diplôme et Carte CIN.'}
+                </p>
+              </div>
+
+              {isDossierComplet ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveStep('catalogue')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs shrink-0"
+                >
+                  <span>Passer à l’Étape 2 (Sujets de Thèse)</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <div className="text-xs font-bold text-amber-900 bg-white border border-amber-200 px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0 shadow-2xs">
+                  {candidateDocsCount} sur 4 pièces scannées
+                </div>
+              )}
+            </div>
+
+            {/* Visual completion progress bar */}
+            <div className="mt-4 pt-3 border-t border-neutral-200/60">
+              <div className="flex items-center justify-between text-[11px] text-neutral-500 mb-1.5">
+                <span>Progression de l'Étape 1 (Documents) :</span>
+                <span className="font-bold text-neutral-900 font-mono">
+                  {Math.round((candidateDocsCount / 4) * 100)}%
+                </span>
+              </div>
+              <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    isDossierComplet ? 'bg-emerald-600' : 'bg-neutral-900'
+                  }`}
+                  style={{ width: `${(candidateDocsCount / 4) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section A: Profil Candidat */}
+          {currentUser && (
+            <div className="p-5 sm:p-6 bg-white border border-neutral-200 rounded-2xl shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <UserIcon className="w-4 h-4 text-neutral-800" />
+                  <h3 className="text-sm font-bold text-neutral-900">
+                    A. Profil & Coordonnées du Candidat
+                  </h3>
+                </div>
+                <span className="text-[11px] text-neutral-500 font-mono">
+                  Compte : {currentUser.email}
+                </span>
+              </div>
+
+              <form onSubmit={handleProfileSave} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Nom de famille *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={profileNom}
+                      onChange={(e) => setProfileNom(e.target.value)}
+                      placeholder="Ex: El Amrani"
+                      className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Prénom *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={profilePrenom}
+                      onChange={(e) => setProfilePrenom(e.target.value)}
+                      placeholder="Ex: Youssef"
+                      className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Code CIN *
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        required
+                        value={profileCin}
+                        onChange={(e) => setProfileCin(e.target.value.toUpperCase())}
+                        placeholder="Ex: CD654321"
+                        className="w-full pl-9 pr-3 py-2 text-xs uppercase font-mono bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Téléphone *
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5 pointer-events-none" />
+                      <input
+                        type="tel"
+                        required
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        placeholder="+212 6..."
+                        className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Établissement d'origine
+                    </label>
+                    <select
+                      value={profileEstablishment}
+                      onChange={(e) => setProfileEstablishment(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+                    >
+                      {ESTABLISHMENTS.map((est) => (
+                        <option key={est} value={est}>
+                          {est}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1">
+                      Dernier diplôme préparé / obtenu
+                    </label>
+                    <input
+                      type="text"
+                      value={profileDiplome}
+                      onChange={(e) => setProfileDiplome(e.target.value)}
+                      placeholder="Ex: Master Recherche en IA"
+                      className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSavingProfile ? 'Enregistrement...' : 'Enregistrer mon profil'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Section B: 4 Documents Grid */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <div>
+                <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-neutral-800" />
+                  <span>B. Scan des 4 Pièces Justificatives Obligatoires</span>
+                </h3>
+                <p className="text-xs text-neutral-500">
+                  Numérisez par webcam ou téléversez vos documents (PDF ou Image).
+                </p>
+              </div>
+              <span className="text-xs font-bold text-neutral-700 bg-neutral-100 px-3 py-1 rounded-xl border border-neutral-200 self-start sm:self-auto">
+                {candidateDocsCount} / 4 scannées
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {REQUIRED_DOCS.map((req) => {
+                const uploadedDoc = candidateDocs.find((d) => d.type === req.type);
+                const IconComp = req.icon;
+
+                return (
+                  <div
+                    key={req.type}
+                    className={`p-5 rounded-2xl border bg-white flex flex-col justify-between transition-all shadow-xs ${
+                      uploadedDoc
+                        ? 'border-neutral-200 hover:border-neutral-300'
+                        : 'border-dashed border-neutral-300 hover:border-neutral-900'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Document Card Header */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                              uploadedDoc
+                                ? 'bg-neutral-900 text-white'
+                                : 'bg-neutral-100 text-neutral-700'
+                            }`}
+                          >
+                            <IconComp className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-neutral-900">{req.label}</h4>
+                            <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">
+                              {req.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        {uploadedDoc ? (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
+                            <Check className="w-3 h-3" />
+                            <span>Scanné & Validé</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
+                            Obligatoire
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Document Thumbnail preview */}
+                      {uploadedDoc && (
+                        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2.5">
+                          <div className="flex items-center gap-3">
+                            {uploadedDoc.dataUrl && uploadedDoc.dataUrl.startsWith('data:image/') ? (
+                              <img
+                                src={uploadedDoc.dataUrl}
+                                alt={uploadedDoc.title}
+                                onClick={() =>
+                                  openAttachment({
+                                    title: uploadedDoc.title,
+                                    subtitle: `Scan certifié — ${uploadedDoc.fileName}`,
+                                    content: `Document certifié conforme pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nNumérisé le : ${uploadedDoc.uploadedAt}`,
+                                    author: currentUser?.name || 'Candidat',
+                                    date: uploadedDoc.uploadedAt,
+                                    dataUrl: uploadedDoc.dataUrl,
+                                  })
+                                }
+                                className="w-12 h-12 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
+                                <span>PDF</span>
+                                <span className="text-[8px] text-neutral-500 font-sans">SCAN</span>
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-mono text-neutral-900 font-bold truncate max-w-[150px] sm:max-w-[200px]">
+                                  {uploadedDoc.fileName}
+                                </span>
+                                <span className="text-[10px] text-neutral-600 font-semibold bg-white border border-neutral-200 px-1.5 py-0.5 rounded-md shrink-0">
+                                  {uploadedDoc.fileSize}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1">
+                                {uploadedDoc.captureMethod === 'camera' ? (
+                                  <span className="flex items-center gap-1 text-neutral-600 font-medium">
+                                    <Camera className="w-3 h-3 text-neutral-500" />
+                                    <span>Numérisé par caméra</span>
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-neutral-600 font-medium">
+                                    <Upload className="w-3 h-3 text-neutral-500" />
+                                    <span>Importé par fichier</span>
+                                  </span>
+                                )}
+                                <span>·</span>
+                                <span>{uploadedDoc.uploadedAt}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-600 border-t border-neutral-200">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openAttachment({
+                                  title: uploadedDoc.title,
+                                  subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
+                                  content: `Scan certifié conforme pour le candidat ${currentUser?.name} (CIN: ${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                  author: currentUser?.name || 'Candidat',
+                                  date: uploadedDoc.uploadedAt,
+                                  dataUrl: uploadedDoc.dataUrl,
+                                })
+                              }
+                              className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Voir le scan complet</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => deleteCandidateDocument(uploadedDoc.id)}
+                              className="text-rose-600 hover:text-rose-700 font-medium text-xs"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Trigger Scanner / Upload Modal */}
+                    <div className="pt-3">
+                      <button
+                        type="button"
+                        onClick={() => openScanner(req.type, req.label)}
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all shadow-xs ${
+                          uploadedDoc
+                            ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 border border-neutral-200'
+                            : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                        }`}
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>
+                          {uploadedDoc
+                            ? 'Remplacer / Rescanner ce document'
+                            : 'Numériser / Importer ce document'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ÉTAPE 2 : CONSULTATION & RECHERCHE DES SUJETS DE THÈSE */}
+      {/* ========================================================================= */}
+      {activeStep === 'catalogue' && (
+        <div className="space-y-6">
+          {/* Warning banner if Step 1 is not complete */}
+          {!isDossierComplet ? (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5 text-xs text-amber-900">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  <strong>Candidature bloquée ({candidateDocsCount}/4 pièces scannées) :</strong> Vous
+                  devez obligatoirement scanner vos 4 pièces à l'Étape 1 pour pouvoir postuler.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep('documents')}
+                className="w-full sm:w-auto px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
+              >
+                Aller à l'Étape 1 (Scanner mes pièces)
+              </button>
+            </div>
+          ) : (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2 text-xs text-emerald-900">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>
+                  <strong>Dossier 4/4 prêt :</strong> Vous pouvez sélectionner un sujet ci-dessous et
+                  cliquer sur "Postuler". Vos documents y seront immédiatement associés.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Search Bar & Filters */}
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
@@ -250,7 +855,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               )}
             </div>
 
-            {/* Filter buttons by establishment */}
+            {/* Establishment filter buttons */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
               <span className="text-neutral-400 mr-1 shrink-0 hidden sm:inline">Établissement :</span>
               {['Tous', ...ESTABLISHMENTS].map((est) => {
@@ -276,14 +881,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-neutral-500">
               <span className="tabular-nums font-medium text-neutral-800">
-                {filteredTopics.length} sujet{filteredTopics.length > 1 ? 's' : ''} disponible{filteredTopics.length > 1 ? 's' : ''}
+                {filteredTopics.length} sujet{filteredTopics.length > 1 ? 's' : ''} de thèse disponible{filteredTopics.length > 1 ? 's' : ''}
               </span>
               <span>Année Universitaire 2026-2027 · USMBA</span>
             </div>
 
             {filteredTopics.length === 0 ? (
               <div className="py-12 sm:py-16 text-center border border-dashed border-neutral-200 rounded-2xl bg-white px-4">
-                <p className="text-sm text-neutral-500">Aucun sujet ne correspond à vos filtres.</p>
+                <p className="text-sm text-neutral-500">Aucun sujet ne correspond à vos critères.</p>
                 <button
                   onClick={() => {
                     setSearchQuery('');
@@ -291,14 +896,16 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   }}
                   className="mt-3 text-xs font-semibold text-neutral-900 underline underline-offset-4"
                 >
-                  Réinitialiser les critères
+                  Réinitialiser les filtres
                 </button>
               </div>
             ) : (
               <div className="divide-y divide-neutral-200 border border-neutral-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                 {filteredTopics.map((topic) => {
                   const alreadyApplied = applications.some(
-                    (a) => a.topicId === topic.id && a.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()
+                    (a) =>
+                      a.topicId === topic.id &&
+                      a.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()
                   );
                   const isAvailable = topic.slotsTaken < topic.slotsTotal && topic.status !== 'cloture';
 
@@ -314,11 +921,17 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-neutral-600">
                           <span className="font-semibold text-neutral-900">{topic.establishment}</span>
-                          <span aria-hidden="true" className="text-neutral-300">·</span>
+                          <span aria-hidden="true" className="text-neutral-300">
+                            ·
+                          </span>
                           <span>{topic.laboratory}</span>
-                          <span aria-hidden="true" className="text-neutral-300">·</span>
+                          <span aria-hidden="true" className="text-neutral-300">
+                            ·
+                          </span>
                           <span>Dir. {topic.supervisorName}</span>
-                          <span aria-hidden="true" className="text-neutral-300">·</span>
+                          <span aria-hidden="true" className="text-neutral-300">
+                            ·
+                          </span>
                           <span className="text-emerald-700 font-semibold">Validé structure CED</span>
                         </div>
 
@@ -340,16 +953,23 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
                       <div className="flex items-center gap-2 sm:gap-3 shrink-0 pt-2 md:pt-0 w-full sm:w-auto">
                         {alreadyApplied ? (
-                          <div className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
+                          <div className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
                             <Check className="w-3.5 h-3.5" />
                             <span>Candidature transmise</span>
                           </div>
                         ) : isAvailable ? (
                           <button
-                            onClick={() => onOpenApply(topic)}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
+                            type="button"
+                            onClick={() => handleTopicApplyAttempt(topic)}
+                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap shadow-xs ${
+                              isDossierComplet
+                                ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                                : 'bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200'
+                            }`}
                           >
-                            <span>Postuler au sujet</span>
+                            <span>
+                              {isDossierComplet ? 'Postuler (Dossier prêt)' : 'Étape 1 requise (4 pièces)'}
+                            </span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         ) : (
@@ -365,12 +985,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* TAB 2: SUIVI PAR PROGRESSION (5 ÉTAPES CLÉS) */}
-      {activeTab === 'suivi' && (
+      {/* ========================================================================= */}
+      {/* ÉTAPE 3 : POSTULATION & SUIVI DE LA PROGRESSION */}
+      {/* ========================================================================= */}
+      {activeStep === 'suivi' && (
         <div className="space-y-6 sm:space-y-8">
           {currentCandidateApp ? (
             <div className="p-4 sm:p-6 md:p-8 border border-neutral-200 rounded-2xl bg-white space-y-6 sm:space-y-8 shadow-xs">
-              {/* Alert: Demande de correction si statut a_corriger */}
+              {/* Alert si correction demandée */}
               {currentCandidateApp.status === 'a_corriger' && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
@@ -378,21 +1000,22 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     <span>Correction requise par votre directeur de thèse :</span>
                   </div>
                   <p className="text-xs text-amber-800 leading-relaxed pl-6">
-                    "{currentCandidateApp.supervisorFeedback || currentCandidateApp.notes || 'Veuillez renouveler ou vérifier vos pièces scannées.'}"
+                    "{currentCandidateApp.supervisorFeedback || 'Veuillez renouveler ou vérifier vos pièces scannées.'}"
                   </p>
                   <div className="pl-6 pt-1">
                     <button
-                      onClick={() => setActiveTab('documents')}
+                      type="button"
+                      onClick={() => setActiveStep('documents')}
                       className="px-3.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
                     >
                       <Camera className="w-3.5 h-3.5" />
-                      <span>Remplacer / re-scanner mes documents</span>
+                      <span>Remplacer / re-scanner mes documents à l'Étape 1</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Header with Title and Delete action */}
+              {/* Application Header Card */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-neutral-100 pb-5">
                 <div className="space-y-1.5">
                   <div className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
@@ -415,7 +1038,9 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 <div className="w-full sm:w-auto pt-2 sm:pt-0">
                   {confirmDeleteAppId === currentCandidateApp.id ? (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
-                      <span className="text-xs text-rose-800 font-medium">Confirmer le retrait du dossier ?</span>
+                      <span className="text-xs text-rose-800 font-medium">
+                        Confirmer le retrait du dossier ?
+                      </span>
                       <div className="flex items-center gap-2 mt-1 sm:mt-0">
                         <button
                           onClick={() => {
@@ -446,30 +1071,35 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* 5-Step Dynamic Progress Bar */}
+              {/* Exact 5-Step Progress Bar requested:
+                  1. Pièces scannées ➔ 2. Candidature soumise ➔ 3. Évaluation Directeur ➔ 4. Validation Structure ➔ 5. Admission */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700">
-                    Barre de Progression Officielle (5 Étapes)
+                    Barre de Progression Officielle (5 Jalons)
                   </h3>
                   <span className="text-xs font-medium text-neutral-600">
-                    Statut actuel : <strong className="text-neutral-900">{PROGRESS_STEPS[currentStep - 1]?.label || 'Dossier soumis'}</strong> ({currentStep}/5)
+                    Statut actuel :{' '}
+                    <strong className="text-neutral-900">
+                      {PROGRESS_STEPS[currentStep - 1]?.label || 'Candidature soumise'}
+                    </strong>{' '}
+                    ({currentStep}/5)
                   </span>
                 </div>
 
-                {/* DESKTOP VIEW (Horizontal timeline with connector bar) */}
+                {/* DESKTOP TIMELINE */}
                 <div className="hidden sm:block relative pt-3 pb-4">
-                  {/* Background Track Line */}
                   <div className="absolute top-7 left-8 right-8 h-1 bg-neutral-100 -z-0" />
-                  {/* Active Progress Fill */}
                   <div
                     className="absolute top-7 left-8 h-1 bg-neutral-900 transition-all duration-500 -z-0"
                     style={{
-                      width: `${Math.min(100, Math.max(0, ((currentStep - 1) / (PROGRESS_STEPS.length - 1)) * 100))}%`,
+                      width: `${Math.min(
+                        100,
+                        Math.max(0, ((currentStep - 1) / (PROGRESS_STEPS.length - 1)) * 100)
+                      )}%`,
                     }}
                   />
 
-                  {/* 5 Step Nodes */}
                   <div className="grid grid-cols-5 gap-2 relative z-10">
                     {PROGRESS_STEPS.map((s) => {
                       const isCompleted = currentStep > s.step;
@@ -508,7 +1138,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   </div>
                 </div>
 
-                {/* MOBILE VIEW (Vertical Step Cards) */}
+                {/* MOBILE TIMELINE */}
                 <div className="block sm:hidden space-y-2 pt-2">
                   {PROGRESS_STEPS.map((s) => {
                     const isCompleted = currentStep > s.step;
@@ -538,7 +1168,11 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <span className={`text-xs font-bold ${isCurrent ? 'text-neutral-900' : 'text-neutral-700'}`}>
+                            <span
+                              className={`text-xs font-bold ${
+                                isCurrent ? 'text-neutral-900' : 'text-neutral-700'
+                              }`}
+                            >
                               {s.label}
                             </span>
                             {isCurrent && (
@@ -560,7 +1194,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Feedback and Notes from Supervisor */}
+              {/* Feedback from Supervisor */}
               {currentCandidateApp.supervisorFeedback && (
                 <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1.5">
                   <div className="text-xs font-bold text-neutral-900 flex items-center justify-between">
@@ -580,45 +1214,49 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               )}
 
-              {/* Summary Table / Mobile Card */}
+              {/* Summary table */}
               <div className="space-y-2">
                 <div className="text-xs font-bold uppercase tracking-wider text-neutral-700">
                   Fiche synthétique du dossier
                 </div>
 
-                {/* Mobile Card View (< sm) */}
                 <div className="block sm:hidden border border-neutral-200 rounded-xl bg-white p-4 space-y-3 shadow-xs">
                   <div>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Intitulé Thèse</span>
-                    <h4 className="text-xs font-bold text-neutral-900 mt-0.5">{currentCandidateApp.topicTitle}</h4>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+                      Intitulé Thèse
+                    </span>
+                    <h4 className="text-xs font-bold text-neutral-900 mt-0.5">
+                      {currentCandidateApp.topicTitle}
+                    </h4>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 text-xs">
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Établissement</span>
-                      <span className="font-medium text-neutral-800">{currentCandidateApp.establishment}</span>
+                      <span className="font-medium text-neutral-800">
+                        {currentCandidateApp.establishment}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Laboratoire</span>
-                      <span className="font-medium text-neutral-800">{currentCandidateApp.laboratory}</span>
+                      <span className="font-medium text-neutral-800">
+                        {currentCandidateApp.laboratory}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Directeur</span>
-                      <span className="font-medium text-neutral-800">{currentCandidateApp.supervisorName}</span>
+                      <span className="font-medium text-neutral-800">
+                        {currentCandidateApp.supervisorName}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Progression</span>
-                      <span className="font-semibold text-neutral-900">Étape {currentCandidateApp.currentStep}/5</span>
+                      <span className="font-semibold text-neutral-900">
+                        Étape {currentStep}/5
+                      </span>
                     </div>
-                  </div>
-                  <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-                    <span className="text-[10px] text-neutral-400">Statut de la candidature :</span>
-                    <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 capitalize">
-                      {currentCandidateApp.status.replace('_', ' ')}
-                    </span>
                   </div>
                 </div>
 
-                {/* Desktop Table (>= sm) */}
                 <div className="hidden sm:block overflow-x-auto border border-neutral-200 rounded-xl bg-white shadow-xs">
                   <table className="w-full text-left text-xs min-w-[580px]">
                     <thead className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 font-semibold uppercase tracking-wider text-[10px]">
@@ -632,10 +1270,18 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-3 px-3.5 font-bold text-neutral-900 max-w-xs">{currentCandidateApp.topicTitle}</td>
-                        <td className="py-3 px-3.5 text-neutral-700">{currentCandidateApp.establishment} · {currentCandidateApp.laboratory}</td>
-                        <td className="py-3 px-3.5 font-medium text-neutral-800">{currentCandidateApp.supervisorName}</td>
-                        <td className="py-3 px-3.5 font-semibold text-neutral-900">Étape {currentCandidateApp.currentStep}/5</td>
+                        <td className="py-3 px-3.5 font-bold text-neutral-900 max-w-xs">
+                          {currentCandidateApp.topicTitle}
+                        </td>
+                        <td className="py-3 px-3.5 text-neutral-700">
+                          {currentCandidateApp.establishment} · {currentCandidateApp.laboratory}
+                        </td>
+                        <td className="py-3 px-3.5 font-medium text-neutral-800">
+                          {currentCandidateApp.supervisorName}
+                        </td>
+                        <td className="py-3 px-3.5 font-semibold text-neutral-900">
+                          Étape {currentStep}/5
+                        </td>
                         <td className="py-3 px-3.5">
                           <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 capitalize">
                             {currentCandidateApp.status.replace('_', ' ')}
@@ -650,14 +1296,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           ) : (
             <div className="p-8 sm:p-12 text-center border border-dashed border-neutral-200 rounded-2xl bg-white space-y-4">
               <p className="text-sm text-neutral-600">
-                Vous n'avez aucune candidature de thèse active pour le moment.
+                Vous n'avez pas encore de candidature de thèse active.
               </p>
-              <button
-                onClick={() => setActiveTab('catalogue')}
-                className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
-              >
-                Parcourir les sujets disponibles
-              </button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(isDossierComplet ? 'catalogue' : 'documents')}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+                >
+                  {isDossierComplet
+                    ? 'Choisir un sujet de thèse (Étape 2)'
+                    : 'Numériser mes 4 pièces d’abord (Étape 1)'}
+                </button>
+              </div>
             </div>
           )}
 
@@ -674,6 +1325,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               </div>
 
               <button
+                type="button"
                 onClick={onOpenReReg}
                 className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors"
               >
@@ -701,9 +1353,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </p>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-neutral-200 text-neutral-500">
                   <div className="flex items-center gap-3">
-                    <span>Publications : <strong className="text-neutral-900">{currentCandidateReReg.activityReport.publicationsCount}</strong></span>
+                    <span>
+                      Publications :{' '}
+                      <strong className="text-neutral-900">
+                        {currentCandidateReReg.activityReport.publicationsCount}
+                      </strong>
+                    </span>
                     <span>·</span>
-                    <span>Avancement : <strong className="text-neutral-900">{currentCandidateReReg.activityReport.progressPercentage}%</strong></span>
+                    <span>
+                      Avancement :{' '}
+                      <strong className="text-neutral-900">
+                        {currentCandidateReReg.activityReport.progressPercentage}%
+                      </strong>
+                    </span>
                   </div>
                   <button
                     onClick={() =>
@@ -730,167 +1392,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
-      {/* TAB 3: GESTION ET SCAN DES DOCUMENTS (Webcam / Upload) */}
-      {activeTab === 'documents' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base font-bold text-neutral-900">
-                Pièces justificatives obligatoires (4 Scans Certifiés)
-              </h2>
-              <p className="text-xs text-neutral-500">
-                Scannez directement vos pièces avec votre webcam/caméra mobile ou téléversez vos fichiers.
-              </p>
-            </div>
-            <div className="text-xs font-semibold text-neutral-700 bg-neutral-100 px-3 py-1.5 rounded-xl border border-neutral-200 self-start sm:self-auto">
-              {documents.filter((d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase()).length} / 4 pièces certifiées
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {REQUIRED_DOCS.map((req) => {
-              const uploadedDoc = documents.find(
-                (d) => d.candidateEmail.toLowerCase() === currentUser?.email.toLowerCase() && d.type === req.type
-              );
-              const IconComp = req.icon;
-
-              return (
-                <div
-                  key={req.type}
-                  className="p-4 sm:p-5 border border-neutral-200 rounded-2xl bg-white space-y-4 hover:border-neutral-300 transition-colors shadow-xs flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-800 shrink-0">
-                          <IconComp className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-neutral-900">{req.label}</h3>
-                          <p className="text-[11px] text-neutral-500 leading-tight mt-0.5">
-                            {req.description}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {uploadedDoc && (
-                      <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2.5">
-                        <div className="flex items-center gap-3">
-                          {/* Miniature Thumbnail */}
-                          {uploadedDoc.dataUrl && uploadedDoc.dataUrl.startsWith('data:image/') ? (
-                            <img
-                              src={uploadedDoc.dataUrl}
-                              alt={uploadedDoc.title}
-                              onClick={() =>
-                                openAttachment({
-                                  title: uploadedDoc.title,
-                                  subtitle: `Scan certifié — ${uploadedDoc.fileName}`,
-                                  content: `Scan haute définition certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nNumérisé le : ${uploadedDoc.uploadedAt}`,
-                                  author: currentUser?.name || 'Candidat',
-                                  date: uploadedDoc.uploadedAt,
-                                  dataUrl: uploadedDoc.dataUrl,
-                                })
-                              }
-                              className="w-12 h-12 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
-                              <span>PDF</span>
-                              <span className="text-[8px] text-neutral-500 font-sans">SCAN</span>
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-mono text-neutral-900 font-bold truncate max-w-[150px] sm:max-w-[200px]">
-                                {uploadedDoc.fileName}
-                              </span>
-                              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md flex items-center gap-1 shrink-0">
-                                <Check className="w-3 h-3" />
-                                <span>{uploadedDoc.fileSize}</span>
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1">
-                              {uploadedDoc.captureMethod === 'camera' ? (
-                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
-                                  <Camera className="w-3 h-3 text-neutral-500" />
-                                  <span>Numérisé par caméra</span>
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
-                                  <Upload className="w-3 h-3 text-neutral-500" />
-                                  <span>Importé par fichier</span>
-                                </span>
-                              )}
-                              <span>·</span>
-                              <span>{uploadedDoc.uploadedAt}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-600 border-t border-neutral-200">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openAttachment({
-                                title: uploadedDoc.title,
-                                subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
-                                content: `Scan certifié conforme du document [${uploadedDoc.title}] pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier numérique : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
-                                author: currentUser?.name || 'Candidat',
-                                date: uploadedDoc.uploadedAt,
-                                dataUrl: uploadedDoc.dataUrl,
-                              })
-                            }
-                            className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
-                          >
-                            <span>Voir le scan complet</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteCandidateDocument(uploadedDoc.id)}
-                            className="text-rose-600 hover:text-rose-700 font-medium text-xs"
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions to Scan or Upload */}
-                  <div className="pt-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openScanner(req.type, req.label)}
-                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-semibold text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded-xl transition-colors border border-neutral-200"
-                      >
-                        <Camera className="w-3.5 h-3.5 text-neutral-700" />
-                        <span>Scanner direct</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openScanner(req.type, req.label)}
-                        className="flex items-center justify-center gap-1.5 py-2.5 px-3 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 rounded-xl transition-colors shadow-xs"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Téléverser</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Interactive Document Scanner Modal */}
+      {/* Document Scanner Modal */}
       <DocumentScannerModal
         isOpen={scanningDocType !== null}
         docType={scanningDocType}

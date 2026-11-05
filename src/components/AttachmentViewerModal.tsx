@@ -8,6 +8,23 @@ export const AttachmentViewerModal: React.FC = () => {
   if (!viewingAttachment) return null;
 
   const isImage = viewingAttachment.dataUrl && viewingAttachment.dataUrl.startsWith('data:image/');
+  const isPdf = viewingAttachment.dataUrl && viewingAttachment.dataUrl.startsWith('data:application/pdf');
+
+  const handleDownload = () => {
+    if (viewingAttachment.dataUrl) {
+      const a = document.createElement('a');
+      a.href = viewingAttachment.dataUrl;
+      a.download = viewingAttachment.title.endsWith('.pdf') || viewingAttachment.title.endsWith('.jpg')
+        ? viewingAttachment.title
+        : `${viewingAttachment.title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Téléchargement du document certifié réussi.');
+    } else {
+      showToast('Téléchargement du document certifié initié.');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
@@ -28,9 +45,9 @@ export const AttachmentViewerModal: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => showToast('Téléchargement du document certifié initié')}
+              onClick={handleDownload}
               className="p-1.5 text-neutral-500 hover:text-neutral-800 rounded-lg hover:bg-neutral-100 transition-colors"
-              title="Télécharger"
+              title="Télécharger le document"
             >
               <Download className="w-4 h-4" />
             </button>
@@ -67,6 +84,22 @@ export const AttachmentViewerModal: React.FC = () => {
                   src={viewingAttachment.dataUrl}
                   alt={viewingAttachment.title}
                   className="max-h-80 w-auto object-contain rounded-lg shadow-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* If there is an uploaded PDF */}
+          {isPdf && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                Document PDF Certifié Conforme
+              </h4>
+              <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100 h-80 sm:h-96 shadow-inner">
+                <iframe
+                  src={viewingAttachment.dataUrl}
+                  title={viewingAttachment.title}
+                  className="w-full h-full border-0"
                 />
               </div>
             </div>

@@ -36,6 +36,7 @@ export interface AppContextType {
     etablissementOrigine?: string;
     diplomeOrigine?: string;
   }) => { success: boolean; message: string };
+  updateUserProfile: (data: Partial<User>) => void;
   logout: () => void;
 
   // Topics management
@@ -239,12 +240,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Password verification
+    // Password verification (Strict: no login without password)
     const expectedPassword = matchedUser.password || 'usmba2026';
-    if (password && password.trim() !== expectedPassword) {
+    if (!password || password.trim() === '') {
       return {
         success: false,
-        message: 'Mot de passe incorrect. Pour les comptes institutionnels existants, le mot de passe initial est usmba2026.',
+        message: 'Le mot de passe est obligatoire pour vous connecter à votre compte.',
+      };
+    }
+    if (password.trim() !== expectedPassword) {
+      return {
+        success: false,
+        message: 'Mot de passe incorrect. Pour les comptes institutionnels de démonstration, le mot de passe est usmba2026.',
       };
     }
 
@@ -302,6 +309,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentView('dashboard');
     showToast(`Compte candidat créé avec succès ! Bienvenue ${newCandidate.name}`);
     return { success: true, message: 'Inscription finalisée' };
+  };
+
+  const updateUserProfile = (data: Partial<User>) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, ...data };
+    setCurrentUser(updated);
+    setRegisteredUsers((prev) =>
+      prev.map((u) => (u.id === currentUser.id ? { ...u, ...data } : u))
+    );
+    showToast('Profil candidat mis à jour avec succès.');
   };
 
   const logout = () => {
@@ -427,7 +444,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supervisorName: targetTopic.supervisorName,
       supervisorId: targetTopic.supervisorId,
       status: 'soumis',
-      currentStep: 1, // Étape 1 : Inscription Dossier
+      currentStep: 2, // Étape 2 : Candidature soumise (Étape 1 : Pièces scannées étant validée au préalable)
       submittedDate: new Date().toISOString().split('T')[0],
       documents: userDocs,
       notes: notes || 'Candidature formelle et 4 pièces justificatives transmises.',
@@ -457,7 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((t) => (t.id === topicId ? { ...t, slotsTaken: t.slotsTaken + 1 } : t))
     );
 
-    showToast('Candidature déposée avec succès (Étape 1 : Inscription Dossier)');
+    showToast('Candidature déposée avec succès (Étape 2 : Candidature soumise)');
   };
 
   const deleteApplication = (appId: string) => {
@@ -726,6 +743,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registeredUsers,
         loginWithEmail,
         registerCandidate,
+        updateUserProfile,
         logout,
         topics,
         addTopic,

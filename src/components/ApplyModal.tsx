@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
 import { ThesisTopic, DocumentType, CandidateDocument } from '../types';
 import { useApp } from '../context/AppContext';
-import { X, Check, Building2, User, Phone, IdCard, GraduationCap, Mail, FileText, Camera, Upload, AlertCircle, CheckCircle2, Eye } from 'lucide-react';
+import {
+  X,
+  Check,
+  Building2,
+  User,
+  Phone,
+  CreditCard,
+  GraduationCap,
+  Mail,
+  FileText,
+  Camera,
+  Upload,
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  ShieldCheck,
+} from 'lucide-react';
 import { DocumentScannerModal } from './DocumentScannerModal';
 
 interface ApplyModalProps {
@@ -10,10 +26,12 @@ interface ApplyModalProps {
 }
 
 export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
-  const { addApplication, currentUser, documents, uploadCandidateDocument, openAttachment } = useApp();
+  const { addApplication, currentUser, documents, uploadCandidateDocument, openAttachment, showToast } =
+    useApp();
 
   const initialFirstName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || '';
-  const initialLastName = currentUser?.lastName || currentUser?.name?.split(' ').slice(1).join(' ') || '';
+  const initialLastName =
+    currentUser?.lastName || currentUser?.name?.split(' ').slice(1).join(' ') || '';
 
   const [nom, setNom] = useState(initialLastName);
   const [prenom, setPrenom] = useState(initialFirstName);
@@ -36,16 +54,29 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
 
   if (!topic) return null;
 
+  // Retrieve current candidate documents
   const candidateDocs = documents.filter(
-    (d) => d.candidateEmail.toLowerCase() === (email.trim().toLowerCase() || currentUser?.email.toLowerCase())
+    (d) =>
+      d.candidateEmail.toLowerCase() ===
+      (email.trim().toLowerCase() || currentUser?.email.toLowerCase())
   );
 
   const REQUIRED_DOC_TYPES: { type: DocumentType; label: string; desc: string }[] = [
     { type: 'baccalaureat', label: '1. Baccalauréat', desc: 'Diplôme certifié conforme' },
-    { type: 'releve_notes', label: '2. Relevés de notes', desc: 'Relevés officiels Licence & Master' },
+    {
+      type: 'releve_notes',
+      label: '2. Relevés de notes',
+      desc: 'Relevés officiels Licence & Master',
+    },
     { type: 'diplomes', label: '3. Diplômes universitaires', desc: 'Attestations & Diplômes' },
     { type: 'cin', label: '4. Carte d’Identité (CIN)', desc: 'Scan recto/verso net de la CIN' },
   ];
+
+  const missingDocs = REQUIRED_DOC_TYPES.filter(
+    (rd) => !candidateDocs.some((d) => d.type === rd.type)
+  );
+
+  const isDossierComplet = missingDocs.length === 0;
 
   const handleOpenScanner = (type: DocumentType, label: string) => {
     setScanningType(type);
@@ -68,23 +99,20 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     setErrorMsg('');
 
     if (!nom.trim() || !prenom.trim() || !email.trim() || !phone.trim() || !cin.trim()) {
-      setErrorMsg('Veuillez remplir tous les champs obligatoires du profil (Nom, Prénom, Email, Téléphone, CIN).');
+      setErrorMsg(
+        'Veuillez renseigner tous les champs obligatoires du profil (Nom, Prénom, Email, Téléphone, CIN).'
+      );
       return;
     }
 
     if (!email.toLowerCase().endsWith('@usmba.ac.ma')) {
-      setErrorMsg('Veuillez renseigner votre adresse email académique institutionnelle (@usmba.ac.ma).');
+      setErrorMsg('Veuillez renseigner une adresse email institutionnelle (@usmba.ac.ma).');
       return;
     }
 
-    // Check mandatory 4 documents
-    const missingDocs = REQUIRED_DOC_TYPES.filter(
-      (rd) => !candidateDocs.some((d) => d.type === rd.type)
-    );
-
-    if (missingDocs.length > 0) {
+    if (!isDossierComplet) {
       setErrorMsg(
-        `Dossier incomplet : Veuillez obligatoirement scanner ou téléverser les 4 pièces requises (manquant : ${missingDocs
+        `Dossier incomplet : Vous devez obligatoirement joindre vos 4 pièces justificatives avant de finaliser votre candidature (manquant : ${missingDocs
           .map((m) => m.label)
           .join(', ')}).`
       );
@@ -109,27 +137,29 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
         candidateDocs
       );
       setIsSubmitting(false);
+      showToast('Candidature transmise avec succès au directeur de thèse !');
       onClose();
     }, 250);
   };
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs">
         <div className="w-full max-w-[95vw] sm:max-w-2xl max-h-[92vh] overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
           <div className="sticky top-0 bg-white px-5 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between z-10">
             <div>
-              <h2 className="text-base font-bold text-neutral-900">
-                Dossier de Candidature au Doctorat
+              <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-neutral-900" />
+                <span>Dépôt Officiel de Candidature · Étape 3</span>
+              </div>
+              <h2 className="text-base font-bold text-neutral-900 mt-0.5">
+                Candidature au Doctorat
               </h2>
-              <p className="text-xs text-neutral-500">
-                Sujet proposé par {topic.establishment} · {topic.laboratory}
-              </p>
             </div>
             <button
               onClick={onClose}
-              aria-label="Fermer"
+              aria-label="Fermer la boîte de dialogue"
               className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <X className="w-4 h-4" />
@@ -138,8 +168,8 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
 
           {/* Form Content */}
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-6">
-            {/* Topic Summary Card */}
-            <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1.5">
+            {/* Selected Topic Card */}
+            <div className="p-4 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-1.5">
               <div className="text-[10px] font-bold tracking-wider text-neutral-500 uppercase">
                 Sujet de thèse sélectionné
               </div>
@@ -156,8 +186,9 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
             </div>
 
             {errorMsg && (
-              <div className="p-3.5 text-xs bg-rose-50 text-rose-800 border border-rose-200 rounded-xl font-medium leading-relaxed">
-                {errorMsg}
+              <div className="p-3.5 text-xs bg-rose-50 text-rose-800 border border-rose-200 rounded-xl font-medium leading-relaxed flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{errorMsg}</span>
               </div>
             )}
 
@@ -202,21 +233,21 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                     Code CIN <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <IdCard className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5 pointer-events-none" />
+                    <CreditCard className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5 pointer-events-none" />
                     <input
                       type="text"
                       required
                       value={cin}
                       onChange={(e) => setCin(e.target.value.toUpperCase())}
                       placeholder="Ex: CD789123"
-                      className="w-full pl-9 pr-3 py-2 text-xs font-mono bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
+                      className="w-full pl-9 pr-3 py-2 text-xs font-mono uppercase bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Numéro de Téléphone <span className="text-rose-500">*</span>
+                    Téléphone <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <Phone className="w-3.5 h-3.5 text-neutral-400 absolute left-3 top-2.5 pointer-events-none" />
@@ -254,7 +285,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
             <div className="space-y-3 pt-3 border-t border-neutral-100">
               <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-2">
                 <GraduationCap className="w-3.5 h-3.5 text-neutral-800" />
-                <span>2. Établissement et Diplôme d'origine</span>
+                <span>2. Cursus & Diplôme d'origine</span>
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -268,10 +299,16 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                     className="w-full px-3 py-2 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
                   >
                     <option value="FST Fès">Faculté des Sciences et Techniques (FST Fès)</option>
-                    <option value="FS Dhar El Mahraz">Faculté des Sciences Dhar El Mahraz (FSDM)</option>
-                    <option value="ENSA Fès">École Nationale des Sciences Appliquées (ENSA Fès)</option>
+                    <option value="FS Dhar El Mahraz">
+                      Faculté des Sciences Dhar El Mahraz (FSDM)
+                    </option>
+                    <option value="ENSA Fès">
+                      École Nationale des Sciences Appliquées (ENSA Fès)
+                    </option>
                     <option value="FSJES Fès">Faculté des Sciences Juridiques, Éco et Sociales</option>
-                    <option value="FLSH Dhar El Mahraz">Faculté des Lettres et des Sciences Humaines</option>
+                    <option value="FLSH Dhar El Mahraz">
+                      Faculté des Lettres et des Sciences Humaines
+                    </option>
                     <option value="EST Fès">École Supérieure de Technologie (EST Fès)</option>
                     <option value="Autre Établissement Universitaire">Autre Établissement</option>
                   </select>
@@ -279,7 +316,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
 
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Diplôme préparé / obtenu
+                    Dernier diplôme préparé / obtenu
                   </label>
                   <input
                     type="text"
@@ -292,14 +329,20 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
               </div>
             </div>
 
-            {/* 3. Dépôt obligatoire des 4 Pièces Justificatives AVEC MINIATURES */}
+            {/* 3. Pièces Justificatives (4/4 requises) */}
             <div className="space-y-3 pt-3 border-t border-neutral-100">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="w-3.5 h-3.5 text-neutral-800" />
-                  <span>3. Pièces Justificatives Scannées (4/4 requises)</span>
+                  <span>3. Pièces justificatives liées (4/4 requises)</span>
                 </h4>
-                <span className="text-[11px] font-semibold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded-md">
+                <span
+                  className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                    isDossierComplet
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
+                  }`}
+                >
                   {candidateDocs.length} / 4 fournies
                 </span>
               </div>
@@ -313,7 +356,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                       key={rd.type}
                       className={`p-3.5 rounded-xl border transition-all ${
                         doc
-                          ? 'bg-neutral-50 border-neutral-200 shadow-xs'
+                          ? 'bg-neutral-50 border-neutral-200 shadow-2xs'
                           : 'bg-white border-dashed border-rose-200 hover:border-neutral-900'
                       }`}
                     >
@@ -326,7 +369,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                         {doc ? (
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
                             <Check className="w-3 h-3" />
-                            <span>Déposé</span>
+                            <span>Lié</span>
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200 shrink-0">
@@ -336,18 +379,17 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                       </div>
 
                       {doc ? (
-                        /* Document Miniature Preview */
                         <div className="mt-3 pt-2.5 border-t border-neutral-200 flex items-center gap-2.5">
                           {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
                             <img
                               src={doc.dataUrl}
                               alt={doc.title}
-                              className="w-10 h-10 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90"
+                              className="w-9 h-9 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90"
                               onClick={() =>
                                 openAttachment({
                                   title: doc.title,
                                   subtitle: `Aperçu document — ${doc.fileName}`,
-                                  content: `Scan haute définition certifié conforme pour le candidat ${nom} ${prenom} (CIN: ${cin}).\n\nTaille : ${doc.fileSize}\nNumérisé le : ${doc.uploadedAt}`,
+                                  content: `Scan certifié conforme pour le candidat ${nom} ${prenom} (CIN: ${cin}).\n\nTaille : ${doc.fileSize}\nNumérisé le : ${doc.uploadedAt}`,
                                   author: `${prenom} ${nom}`,
                                   date: doc.uploadedAt,
                                   dataUrl: doc.dataUrl,
@@ -355,7 +397,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                               }
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0">
+                            <div className="w-9 h-9 rounded-lg bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0">
                               PDF
                             </div>
                           )}
@@ -385,7 +427,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                             className="flex-1 py-1.5 px-2 bg-neutral-900 text-white rounded-lg text-[11px] font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                           >
                             <Camera className="w-3 h-3" />
-                            <span>Scanner / Importer</span>
+                            <span>Scanner ou Importer</span>
                           </button>
                         </div>
                       )}
@@ -398,13 +440,13 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
             {/* 4. Note de motivation */}
             <div className="space-y-1.5 pt-3 border-t border-neutral-100">
               <label className="text-xs font-semibold text-neutral-800">
-                4. Note de motivation / adéquation scientifique (Optionnel)
+                4. Note de motivation / projet préliminaire (Optionnel)
               </label>
               <textarea
                 rows={3}
                 value={statement}
                 onChange={(e) => setStatement(e.target.value)}
-                placeholder="Ex: Titulaire d’un Master en IA, mes travaux de fin d’études s’alignent directement avec les problématiques de ce sujet..."
+                placeholder="Ex: Motivé par la recherche doctorale au sein du laboratoire, mes compétences s’alignent directement avec les objectifs du sujet..."
                 className="w-full p-3 text-xs bg-white border border-neutral-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-neutral-900 text-neutral-900 placeholder:text-neutral-400 leading-relaxed"
               />
             </div>
@@ -420,11 +462,17 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
+                disabled={isSubmitting || !isDossierComplet}
+                className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>{isSubmitting ? 'Enregistrement...' : 'Valider et déposer mon dossier'}</span>
+                <span>
+                  {isSubmitting
+                    ? 'Transmission en cours...'
+                    : isDossierComplet
+                    ? 'Valider et transmettre ma candidature'
+                    : '4 pièces requises pour valider'}
+                </span>
               </button>
             </div>
           </form>

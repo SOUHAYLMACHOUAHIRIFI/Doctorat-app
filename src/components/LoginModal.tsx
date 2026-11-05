@@ -33,8 +33,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
       return;
     }
 
+    if (!password.trim()) {
+      setError('Veuillez saisir votre mot de passe institutionnel.');
+      return;
+    }
+
     setIsSubmitting(true);
-    const result = loginWithEmail(cleanEmail, password);
+    const result = loginWithEmail(cleanEmail, password.trim());
     setIsSubmitting(false);
 
     if (result.success) {

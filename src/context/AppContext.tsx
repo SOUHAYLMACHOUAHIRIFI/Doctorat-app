@@ -33,6 +33,7 @@ interface AppContextType {
   }) => { success: boolean; message: string };
   logout: () => void;
   detectRoleFromEmail: (email: string) => Role;
+  switchRole: (targetRole: Role) => void;
 
   // Topics management
   topics: ThesisTopic[];
@@ -82,29 +83,38 @@ export function resolveRoleFromEmail(email: string, users: User[]): Role {
   // 1. Check if user already exists in directory
   const existing = users.find((u) => u.email.toLowerCase() === normalized);
   if (existing) {
+    // Normalize aliases
+    if (existing.role === 'supervisor') return 'directeur_these';
+    if (existing.role === 'structure_director') return 'directeur_structure';
+    if (existing.role === 'candidate') return 'candidat';
     return existing.role;
   }
 
   // 2. Pattern detection for Direction de Structure / Admin
   if (
-    normalized.includes('dir.structure') ||
-    normalized.includes('direction.structure') ||
-    normalized.includes('ced.contact') ||
-    normalized.includes('direction.') ||
-    normalized.includes('admin.') ||
-    normalized.includes('labo.')
+    normalized.includes('structure') ||
+    normalized.includes('ced') ||
+    normalized.includes('admin') ||
+    normalized.includes('direction') ||
+    normalized.includes('doyen') ||
+    normalized.includes('president') ||
+    normalized.includes('labo')
   ) {
     return 'directeur_structure';
   }
 
-  // 3. Pattern detection for Directeurs de thèse / Professeurs
+  // 3. Pattern detection for Directeurs de thèse / Professeurs / Supervisors
   if (
+    normalized.includes('supervisor') ||
+    normalized.includes('these') ||
+    normalized.includes('thesis') ||
+    normalized.includes('encadrant') ||
+    normalized.includes('prof') ||
     normalized.startsWith('pr.') ||
-    normalized.startsWith('prof.') ||
+    normalized.startsWith('dr.') ||
     normalized.includes('bennani') ||
     normalized.includes('chami') ||
-    normalized.includes('directeur.these') ||
-    normalized.includes('professeur')
+    normalized.includes('directeur')
   ) {
     return 'directeur_these';
   }
@@ -302,6 +312,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setCurrentUser(null);
     showToast('Vous avez été déconnecté.');
+  };
+
+  // Immediate role switcher for seamless navigation across all 3 dashboards
+  const switchRole = (targetRole: Role) => {
+    let normalizedRole: Role = targetRole;
+    if (targetRole === 'supervisor') normalizedRole = 'directeur_these';
+    if (targetRole === 'structure_director') normalizedRole = 'directeur_structure';
+    if (targetRole === 'candidate') normalizedRole = 'candidat';
+
+    // Find existing user in registeredUsers or KNOWN_USERS
+    const targetUser =
+      registeredUsers.find((u) => u.role === normalizedRole || u.role === targetRole) ||
+      KNOWN_USERS.find((u) => u.role === normalizedRole || u.role === targetRole);
+
+    if (targetUser) {
+      setCurrentUser(targetUser);
+      setCurrentView('dashboard');
+      showToast(`Espace actif : ${getRoleLabel(normalizedRole)} (${targetUser.name})`);
+    } else {
+      const fallbackUser: User = {
+        id: `user-${Date.now().toString(36)}`,
+        name:
+          normalizedRole === 'directeur_these'
+            ? 'Pr. Karim Bennani'
+            : normalizedRole === 'directeur_structure'
+            ? 'Direction de Structure CED'
+            : 'Candidat Doctorant',
+        email:
+          normalizedRole === 'directeur_these'
+            ? 'supervisor@usmba.ac.ma'
+            : normalizedRole === 'directeur_structure'
+            ? 'structure@usmba.ac.ma'
+            : 'candidat@usmba.ac.ma',
+        role: normalizedRole,
+        establishment: 'FST Fès',
+        laboratory: normalizedRole === 'directeur_these' ? 'Laboratoire LISAC' : undefined,
+      };
+      setRegisteredUsers((prev) => [...prev, fallbackUser]);
+      setCurrentUser(fallbackUser);
+      setCurrentView('dashboard');
+      showToast(`Espace actif : ${getRoleLabel(normalizedRole)}`);
+    }
   };
 
   // Topics
@@ -560,6 +612,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerCandidate,
         logout,
         detectRoleFromEmail,
+        switchRole,
         topics,
         addTopic,
         updateTopic,
@@ -600,10 +653,15 @@ export const useApp = () => {
 function getRoleLabel(role: Role): string {
   switch (role) {
     case 'candidat':
+    case 'candidate':
       return 'Candidat / Doctorant';
     case 'directeur_these':
+    case 'supervisor':
       return 'Directeur de Thèse';
     case 'directeur_structure':
+    case 'structure_director':
       return 'Directeur de Structure (Admin)';
+    default:
+      return 'Utilisateur';
   }
 }

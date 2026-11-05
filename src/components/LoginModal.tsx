@@ -113,6 +113,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
                   </span>
                 </div>
               )}
+
+              {/* Institutional email hints */}
+              <div className="pt-1 space-y-1.5">
+                <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold block">
+                  Exemples d'adresses institutionnelles autorisées :
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEmail('youssef.elamrani@usmba.ac.ma')}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors font-mono"
+                  >
+                    youssef.elamrani@usmba.ac.ma (Candidat)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmail('karim.bennani@usmba.ac.ma')}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors font-mono"
+                  >
+                    karim.bennani@usmba.ac.ma (Dir. Thèse)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmail('dir.structure@usmba.ac.ma')}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-neutral-100 text-neutral-800 hover:bg-neutral-200 transition-colors font-mono"
+                  >
+                    dir.structure@usmba.ac.ma (Dir. Structure)
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1.5">

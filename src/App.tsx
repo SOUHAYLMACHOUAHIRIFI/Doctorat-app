@@ -55,20 +55,31 @@ const MainLayout: React.FC = () => {
           /* Role-based workspace or Public Catalogue */
           <>
             {/* If user is logged in, show their specific role space */}
-            {currentUser && role === 'candidat' && (
+            {currentUser && (role === 'candidat' || role === 'candidate') && (
               <CandidateView
                 onOpenApply={handleApplyClick}
                 onOpenReReg={handleReRegClick}
               />
             )}
 
-            {currentUser && role === 'directeur_these' && (
+            {currentUser && (role === 'directeur_these' || role === 'supervisor') && (
               <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
             )}
 
-            {currentUser && role === 'directeur_structure' && (
+            {currentUser && (role === 'directeur_structure' || role === 'structure_director') && (
               <StructureDirectorView />
             )}
+
+            {/* Fallback safe check if logged in but role string differed */}
+            {currentUser &&
+              !['candidat', 'candidate', 'directeur_these', 'supervisor', 'directeur_structure', 'structure_director'].includes(
+                role || ''
+              ) && (
+                <CandidateView
+                  onOpenApply={handleApplyClick}
+                  onOpenReReg={handleReRegClick}
+                />
+              )}
 
             {/* If logged out, show search catalogue directly with login prompt */}
             {!currentUser && (

@@ -9,17 +9,22 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) => {
-  const { currentUser, role, logout, currentView, setCurrentView } = useApp();
+  const { currentUser, role, logout, currentView, setCurrentView, switchRole } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const getRoleBadge = (r: Role) => {
     switch (r) {
       case 'candidat':
+      case 'candidate':
         return { label: 'Candidat / Doctorant', shortLabel: 'Candidat', icon: <GraduationCap className="w-4 h-4 text-neutral-800" /> };
       case 'directeur_these':
+      case 'supervisor':
         return { label: 'Directeur de Thèse', shortLabel: 'Dir. Thèse', icon: <UserCheck className="w-4 h-4 text-neutral-800" /> };
       case 'directeur_structure':
+      case 'structure_director':
         return { label: 'Directeur de Structure (Admin)', shortLabel: 'Structure Admin', icon: <Shield className="w-4 h-4 text-neutral-800" /> };
+      default:
+        return { label: 'Utilisateur', shortLabel: 'Compte', icon: <GraduationCap className="w-4 h-4 text-neutral-800" /> };
     }
   };
 
@@ -51,20 +56,53 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
           </button>
         </div>
 
-        {/* Zone 2: Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-2">
+        {/* Zone 2: Desktop Role Switcher & Nav Links */}
+        <nav className="hidden md:flex items-center gap-3">
           {currentUser && (
-            <button
-              onClick={() => handleNavClick('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                currentView === 'dashboard'
-                  ? 'bg-neutral-100 text-neutral-900'
-                  : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-              }`}
-            >
-              {getRoleBadge(currentUser.role).icon}
-              <span>Mon Espace ({getRoleBadge(currentUser.role).shortLabel})</span>
-            </button>
+            <div className="flex items-center p-1 bg-neutral-100 rounded-xl border border-neutral-200">
+              <button
+                onClick={() => {
+                  switchRole('candidat');
+                  handleNavClick('dashboard');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                  role === 'candidat' || role === 'candidate'
+                    ? 'bg-white text-neutral-900 shadow-xs'
+                    : 'text-neutral-500 hover:text-neutral-900'
+                }`}
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Candidat</span>
+              </button>
+              <button
+                onClick={() => {
+                  switchRole('directeur_these');
+                  handleNavClick('dashboard');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                  role === 'directeur_these' || role === 'supervisor'
+                    ? 'bg-white text-neutral-900 shadow-xs'
+                    : 'text-neutral-500 hover:text-neutral-900'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Directeur Thèse</span>
+              </button>
+              <button
+                onClick={() => {
+                  switchRole('directeur_structure');
+                  handleNavClick('dashboard');
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                  role === 'directeur_structure' || role === 'structure_director'
+                    ? 'bg-white text-neutral-900 shadow-xs'
+                    : 'text-neutral-500 hover:text-neutral-900'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Directeur Structure</span>
+              </button>
+            </div>
           )}
 
           <button
@@ -150,6 +188,54 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
                   CIN : {currentUser.cin}
                 </div>
               )}
+
+              {/* Mobile Direct Role Switcher */}
+              <div className="pt-2 border-t border-neutral-200 space-y-1.5">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
+                  Bascule d'espace de travail :
+                </span>
+                <div className="grid grid-cols-3 gap-1 p-1 bg-white rounded-lg border border-neutral-200 text-center">
+                  <button
+                    onClick={() => {
+                      switchRole('candidat');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+                      role === 'candidat' || role === 'candidate'
+                        ? 'bg-neutral-900 text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
+                  >
+                    Candidat
+                  </button>
+                  <button
+                    onClick={() => {
+                      switchRole('directeur_these');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+                      role === 'directeur_these' || role === 'supervisor'
+                        ? 'bg-neutral-900 text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
+                  >
+                    Dir. Thèse
+                  </button>
+                  <button
+                    onClick={() => {
+                      switchRole('directeur_structure');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+                      role === 'directeur_structure' || role === 'structure_director'
+                        ? 'bg-neutral-900 text-white'
+                        : 'text-neutral-600 hover:text-neutral-900'
+                    }`}
+                  >
+                    Structure
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">

@@ -1,4 +1,10 @@
-export type Role = 'candidat' | 'directeur_these' | 'directeur_structure';
+export type Role =
+  | 'candidat'
+  | 'directeur_these'
+  | 'directeur_structure'
+  | 'candidate'
+  | 'supervisor'
+  | 'structure_director';
 
 export interface User {
   id: string;
@@ -35,7 +41,7 @@ export interface ThesisTopic {
   updatedAt?: string;
 }
 
-export type ApplicationStep = 1 | 2 | 3 | 4 | 5; 
+export type ApplicationStep = 1 | 2 | 3 | 4 | 5;
 // 1: Dossier soumis -> 2: Validation structure -> 3: Sélection -> 4: Entretien -> 5: Admis
 
 export type ApplicationStatus = 'soumis' | 'validation_structure' | 'selection' | 'entretien' | 'admis' | 'refuse';

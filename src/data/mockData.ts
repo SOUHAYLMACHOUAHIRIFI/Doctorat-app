@@ -54,6 +54,16 @@ export const KNOWN_USERS: User[] = [
     laboratory: 'Laboratoire LERMA',
   },
   {
+    id: 'user-prof-3',
+    name: 'Pr. Directeur de Thèse (Supervisor)',
+    firstName: 'Directeur',
+    lastName: 'Thèse',
+    email: 'supervisor@usmba.ac.ma',
+    role: 'directeur_these',
+    establishment: 'FST Fès',
+    laboratory: 'Laboratoire LISAC',
+  },
+  {
     id: 'user-admin-1',
     name: 'Direction de Structure / CED USMBA',
     email: 'dir.structure@usmba.ac.ma',
@@ -68,6 +78,22 @@ export const KNOWN_USERS: User[] = [
     role: 'directeur_structure',
     establishment: 'FST Fès',
     laboratory: 'Laboratoire LISAC',
+  },
+  {
+    id: 'user-admin-3',
+    name: 'Directeur de Structure (CED / Admin)',
+    email: 'structure@usmba.ac.ma',
+    role: 'directeur_structure',
+    establishment: 'Présidence & CED USMBA',
+    laboratory: 'Centre d’Études Doctorales (CED)',
+  },
+  {
+    id: 'user-admin-4',
+    name: 'Administration Doctorale',
+    email: 'admin@usmba.ac.ma',
+    role: 'directeur_structure',
+    establishment: 'Présidence & CED USMBA',
+    laboratory: 'Centre d’Études Doctorales (CED)',
   },
 ];
 

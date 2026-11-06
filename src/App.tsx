@@ -14,7 +14,7 @@ import { ThesisTopic } from './types';
 import { CheckCircle2, ShieldCheck, UserCheck, GraduationCap, ArrowRight, Lock } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { currentUser, role, currentView, setCurrentView, toastMessage } = useApp();
+  const { currentUser, role, currentView, setCurrentView, toastMessage, isLoadingAuth } = useApp();
 
   // Modals state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -38,6 +38,28 @@ const MainLayout: React.FC = () => {
     }
   };
 
+  if (isLoadingAuth) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
+        <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white flex items-center justify-center font-bold text-sm mb-3 animate-pulse">
+          GCD
+        </div>
+        <p className="text-xs font-semibold text-neutral-600">Initialisation de la session sécurisée...</p>
+      </div>
+    );
+  }
+
+  const isCandidateRole =
+    currentUser && (currentUser.role === 'CANDIDATE' || currentUser.role === 'candidat' || currentUser.role === 'DOCTORANT');
+  const isSupervisorRole =
+    currentUser && (currentUser.role === 'SUPERVISOR' || currentUser.role === 'directeur_these');
+  const isAdministrationRole =
+    currentUser &&
+    (currentUser.role === 'STRUCTURE_DIRECTOR' ||
+      currentUser.role === 'directeur_structure' ||
+      currentUser.role === 'CED_ADMIN' ||
+      currentUser.role === 'SYSTEM_ADMIN');
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col font-sans selection:bg-neutral-900 selection:text-white transition-colors duration-200">
       {/* Top Bar Navigation with strict RBAC */}
@@ -54,21 +76,21 @@ const MainLayout: React.FC = () => {
         ) : (
           /* Role-based workspace or Public Catalogue (Strict Route Isolation) */
           <>
-            {/* 1. Candidate Workspace (Strictly candidate role only) */}
-            {currentUser && currentUser.role === 'candidat' && (
+            {/* 1. Candidate / Doctoral student Workspace */}
+            {isCandidateRole && (
               <CandidateView
                 onOpenApply={handleApplyClick}
                 onOpenReReg={handleReRegClick}
               />
             )}
 
-            {/* 2. Thesis Supervisor Workspace (Strictly directeur_these role only) */}
-            {currentUser && currentUser.role === 'directeur_these' && (
+            {/* 2. Thesis Supervisor Workspace */}
+            {isSupervisorRole && (
               <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
             )}
 
-            {/* 3. Structure Director Workspace (Strictly directeur_structure role only) */}
-            {currentUser && currentUser.role === 'directeur_structure' && (
+            {/* 3. Structure Director / CED Admin / System Admin Workspace */}
+            {isAdministrationRole && (
               <StructureDirectorView />
             )}
 

@@ -25,9 +25,23 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const [editingTopic, setEditingTopic] = useState<ThesisTopic | null>(null);
   const [reviewingApplication, setReviewingApplication] = useState<CandidateApplication | null>(null);
 
-  const myTopics = topics;
-  const myApplications = applications;
-  const myReRegistrations = reRegistrations;
+  const myTopics = topics.filter(
+    (t) =>
+      t.supervisorId === currentUser?.id ||
+      t.supervisorName === currentUser?.name ||
+      (currentUser?.name && t.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
+  );
+  const myApplications = applications.filter(
+    (a) =>
+      a.supervisorId === currentUser?.id ||
+      a.supervisorName === currentUser?.name ||
+      (currentUser?.name && a.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
+  );
+  const myReRegistrations = reRegistrations.filter(
+    (r) =>
+      r.supervisorName === currentUser?.name ||
+      (currentUser?.name && r.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
+  );
 
   const getTopicStatusBadge = (status: ThesisTopic['status']) => {
     switch (status) {

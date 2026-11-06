@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, LogIn, Mail, Lock, ShieldCheck, Info } from 'lucide-react';
+import { X, LogIn, Mail, Lock, ShieldCheck, Info, KeyRound, CheckCircle2, User } from 'lucide-react';
+import { api } from '../services/api';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -11,16 +12,19 @@ interface LoginModalProps {
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenRegister }) => {
   const { loginWithEmail } = useApp();
 
+  const [mode, setMode] = useState<'login' | 'forgot_password'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     const cleanEmail = email.trim();
     if (!cleanEmail) {
@@ -39,13 +43,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
     }
 
     setIsSubmitting(true);
-    const result = loginWithEmail(cleanEmail, password.trim());
-    setIsSubmitting(false);
+    try {
+      const result = await loginWithEmail(cleanEmail, password.trim());
+      if (result.success) {
+        onClose();
+      } else {
+        setError(result.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la connexion.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-    if (result.success) {
-      onClose();
-    } else {
-      setError(result.message);
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg(null);
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Veuillez saisir une adresse email valide.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.auth.requestPasswordReset(cleanEmail);
+      setSuccessMsg(res.message || 'Lien de réinitialisation sécurisé envoyé.');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la demande de réinitialisation.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -53,17 +83,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
     setEmail(fEmail);
     setPassword('usmba2026');
     setError(null);
+    setSuccessMsg(null);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
-      <div className="w-full max-w-[95vw] sm:max-w-md max-h-[92vh] overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div className="w-full max-w-[95vw] sm:max-w-md max-h-[94vh] overflow-y-auto bg-white border border-neutral-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="sticky top-0 bg-white px-5 sm:px-6 py-4 border-b border-neutral-100 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-neutral-800" />
             <span className="text-sm font-bold text-neutral-900">
-              Authentification Sécurisée
+              {mode === 'login' ? 'Authentification Sécurisée' : 'Réinitialisation Mot de Passe'}
             </span>
             <span className="text-neutral-300">·</span>
             <span className="text-xs font-mono text-neutral-500">GCD USMBA</span>
@@ -78,13 +109,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
         </div>
 
         {/* Form Body */}
-        <div className="p-5 sm:p-6 space-y-5">
+        <div className="p-5 sm:p-6 space-y-4">
           <div className="space-y-1">
             <h3 className="text-base font-bold text-neutral-900">
-              Connexion au Portail Doctoral
+              {mode === 'login' ? 'Connexion au Portail Doctoral' : 'Mot de passe oublié'}
             </h3>
             <p className="text-xs text-neutral-500 leading-relaxed">
-              L'accès est réservé aux comptes institutionnels enregistrés de l'Université Sidi Mohamed Ben Abdellah.
+              {mode === 'login'
+                ? 'Accès sécurisé réservé aux membres de l’Université Sidi Mohamed Ben Abdellah (USMBA).'
+                : 'Saisissez votre email @usmba.ac.ma pour recevoir les instructions de réinitialisation.'}
             </p>
           </div>
 
@@ -94,99 +127,196 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email input */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-neutral-800">
-                Email institutionnel (@usmba.ac.ma) *
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nom.prenom@usmba.ac.ma"
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400 font-mono"
-                />
-              </div>
+          {successMsg && (
+            <div className="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{successMsg}</span>
             </div>
+          )}
 
-            {/* Password input */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <label className="font-semibold text-neutral-800">
-                  Mot de passe *
+          {mode === 'login' ? (
+            <form onSubmit={handleLogin} className="space-y-3.5">
+              {/* Email input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-800">
+                  Email institutionnel (@usmba.ac.ma) *
                 </label>
-                <span className="text-[10px] text-neutral-400">
-                  Contrôle d'accès strict
-                </span>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="prenom.nom@usmba.ac.ma"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400 font-mono"
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Saisissez votre mot de passe"
-                  className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400"
-                />
+
+              {/* Password input */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="font-semibold text-neutral-800">
+                    Mot de passe *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot_password');
+                      setError(null);
+                      setSuccessMsg(null);
+                    }}
+                    className="text-[11px] text-neutral-500 hover:text-neutral-900 underline"
+                  >
+                    Mot de passe oublié ?
+                  </button>
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Saisissez votre mot de passe"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>{isSubmitting ? 'Vérification...' : 'Se connecter'}</span>
-            </button>
-          </form>
+              {/* Submit button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs disabled:opacity-50"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{isSubmitting ? 'Authentification...' : 'Se connecter'}</span>
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordReset} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-neutral-800">
+                  Email institutionnel (@usmba.ac.ma)
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="prenom.nom@usmba.ac.ma"
+                    className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 font-mono"
+                  />
+                </div>
+              </div>
 
-          {/* Institutional Fast Select Hints */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>{isSubmitting ? 'Envoi...' : 'Envoyer les instructions'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setSuccessMsg(null);
+                }}
+                className="w-full text-center text-xs text-neutral-600 hover:text-neutral-900 py-1"
+              >
+                Retour à la connexion
+              </button>
+            </form>
+          )}
+
+          {/* Institutional Fast Select for Testing All 6 Roles */}
           <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-700">
-              <Info className="w-3.5 h-3.5 text-neutral-500" />
-              <span>Comptes académiques institutionnels (MDP initial : usmba2026)</span>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-neutral-700 flex items-center gap-1">
+                <Info className="w-3.5 h-3.5 text-neutral-500" />
+                <span>Comptes de test (Mot de passe : usmba2026)</span>
+              </span>
+              <span className="text-[10px] text-neutral-400 font-mono">6 Rôles RBAC</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[11px]">
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+              {/* 1. CANDIDATE */}
               <button
                 type="button"
                 onClick={() => handleFillCredentials('youssef.elamrani@usmba.ac.ma')}
-                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate"
-                title="Candidat Doctorant"
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Candidat Youssef El Amrani"
               >
-                <span className="font-semibold text-neutral-900 block truncate">Youssef (Candidat)</span>
-                <span className="text-[10px] text-neutral-400 font-mono truncate">@usmba.ac.ma</span>
+                <span className="font-bold text-neutral-900 block truncate">1. Youssef</span>
+                <span className="text-[10px] text-neutral-500 truncate block">CANDIDAT</span>
               </button>
 
+              {/* 2. DOCTORANT */}
+              <button
+                type="button"
+                onClick={() => handleFillCredentials('salma.tazi@usmba.ac.ma')}
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Doctorante Salma Tazi"
+              >
+                <span className="font-bold text-neutral-900 block truncate">2. Salma</span>
+                <span className="text-[10px] text-neutral-500 truncate block">DOCTORANTE</span>
+              </button>
+
+              {/* 3. SUPERVISOR */}
               <button
                 type="button"
                 onClick={() => handleFillCredentials('karim.bennani@usmba.ac.ma')}
-                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate"
-                title="Directeur de Thèse"
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Directeur Pr. Karim Bennani"
               >
-                <span className="font-semibold text-neutral-900 block truncate">Pr. Bennani (Dir.)</span>
-                <span className="text-[10px] text-neutral-400 font-mono truncate">@usmba.ac.ma</span>
+                <span className="font-bold text-neutral-900 block truncate">3. Pr. Bennani</span>
+                <span className="text-[10px] text-neutral-500 truncate block">DIRECTEUR</span>
               </button>
 
+              {/* 4. STRUCTURE_DIRECTOR */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('dir.structure@usmba.ac.ma')}
-                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate"
-                title="Direction de Structure CED"
+                onClick={() => handleFillCredentials('dir.lisac@usmba.ac.ma')}
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Directeur de Structure LISAC"
               >
-                <span className="font-semibold text-neutral-900 block truncate">CED (Structure)</span>
-                <span className="text-[10px] text-neutral-400 font-mono truncate">@usmba.ac.ma</span>
+                <span className="font-bold text-neutral-900 block truncate">4. Dir. LISAC</span>
+                <span className="text-[10px] text-neutral-500 truncate block">STRUCTURE</span>
+              </button>
+
+              {/* 5. CED_ADMIN */}
+              <button
+                type="button"
+                onClick={() => handleFillCredentials('ced.admin@usmba.ac.ma')}
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Responsable du Centre d’Études Doctorales"
+              >
+                <span className="font-bold text-neutral-900 block truncate">5. CED Admin</span>
+                <span className="text-[10px] text-neutral-500 truncate block">CED USMBA</span>
+              </button>
+
+              {/* 6. SYSTEM_ADMIN */}
+              <button
+                type="button"
+                onClick={() => handleFillCredentials('admin.system@usmba.ac.ma')}
+                className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
+                title="Administrateur Global du Système"
+              >
+                <span className="font-bold text-neutral-900 block truncate">6. SysAdmin</span>
+                <span className="text-[10px] text-neutral-500 truncate block">SUPER ADMIN</span>
               </button>
             </div>
           </div>
 
-          {/* New candidate link */}
+          {/* Register Link */}
           <div className="pt-2 border-t border-neutral-100 text-center space-y-1">
             <p className="text-xs text-neutral-500">
               Pas encore inscrit au cycle doctoral ?
@@ -199,7 +329,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               }}
               className="text-xs font-bold text-neutral-900 underline underline-offset-4 hover:text-neutral-700 transition-colors"
             >
-              Créer mon compte candidat institutionnel
+              Créer mon compte candidat institutionnel (@usmba.ac.ma)
             </button>
           </div>
         </div>

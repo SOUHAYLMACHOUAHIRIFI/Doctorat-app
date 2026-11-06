@@ -179,7 +179,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     }
   }
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileNom.trim() || !profilePrenom.trim()) {
       showToast('Le nom et le prénom sont obligatoires.');
@@ -195,16 +195,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     }
 
     setIsSavingProfile(true);
-    updateUserProfile({
-      name: `${profilePrenom.trim()} ${profileNom.trim()}`,
-      firstName: profilePrenom.trim(),
-      lastName: profileNom.trim(),
-      cin: profileCin.trim().toUpperCase(),
-      phone: profilePhone.trim(),
-      etablissementOrigine: profileEstablishment,
-      diplomeOrigine: profileDiplome.trim(),
-    });
-    setIsSavingProfile(false);
+    try {
+      await updateUserProfile({
+        name: `${profilePrenom.trim()} ${profileNom.trim()}`,
+        firstName: profilePrenom.trim(),
+        lastName: profileNom.trim(),
+        cin: profileCin.trim().toUpperCase(),
+        phone: profilePhone.trim(),
+        etablissementOrigine: profileEstablishment,
+        diplomeOrigine: profileDiplome.trim(),
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const openScanner = (type: DocumentType, title: string) => {
@@ -212,14 +215,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     setScanningDocTitle(title);
   };
 
-  const handleSaveScannedDocument = (
+  const handleSaveScannedDocument = async (
     type: DocumentType,
     fileName: string,
     fileSize: string,
     dataUrl: string,
     method: 'camera' | 'upload'
   ) => {
-    uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
+    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
     setScanningDocType(null);
   };
 

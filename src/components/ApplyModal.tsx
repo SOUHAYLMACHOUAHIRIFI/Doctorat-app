@@ -83,18 +83,18 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     setScanningTitle(label);
   };
 
-  const handleSaveScanned = (
+  const handleSaveScanned = async (
     type: DocumentType,
     fileName: string,
     fileSize: string,
     dataUrl: string,
     method: 'camera' | 'upload'
   ) => {
-    uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
+    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
     setScanningType(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -120,8 +120,8 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      addApplication(
+    try {
+      await addApplication(
         topic.id,
         statement.trim() || `Candidature formelle soumise par ${prenom} ${nom}.`,
         `Dossier de candidature initial et projet de recherche pour "${topic.title}". Titulaire de : ${diplomeOrigine} (${etablissementOrigine}).`,
@@ -136,10 +136,13 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
         },
         candidateDocs
       );
-      setIsSubmitting(false);
       showToast('Candidature transmise avec succès au directeur de thèse !');
       onClose();
-    }, 250);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erreur lors du dépôt de candidature.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

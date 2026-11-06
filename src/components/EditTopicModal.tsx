@@ -34,11 +34,11 @@ export const EditTopicModal: React.FC<EditTopicModalProps> = ({ topic, onClose }
 
   if (!topic) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    updateTopic(topic.id, {
+    await updateTopic(topic.id, {
       title: title.trim(),
       establishment,
       laboratory: laboratory.trim(),

@@ -1,7 +1,25 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Role } from '../types';
-import { LogIn, LogOut, GraduationCap, UserCheck, Shield, UserPlus, Menu, X, BookOpen, User, ChevronDown } from 'lucide-react';
+import {
+  LogIn,
+  LogOut,
+  GraduationCap,
+  UserCheck,
+  Shield,
+  UserPlus,
+  Menu,
+  X,
+  BookOpen,
+  User,
+  ChevronDown,
+  Bell,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  Clock,
+  ShieldAlert,
+} from 'lucide-react';
 
 interface NavbarProps {
   onOpenLogin: () => void;
@@ -9,29 +27,62 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) => {
-  const { currentUser, role, logout, currentView, setCurrentView } = useApp();
+  const {
+    currentUser,
+    role,
+    logout,
+    currentView,
+    setCurrentView,
+    notifications,
+    unreadNotificationsCount,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+  } = useApp();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const getRoleDetails = (r?: Role | null) => {
     switch (r) {
+      case 'CANDIDATE':
       case 'candidat':
         return {
           label: 'Espace Candidat',
-          badge: 'Candidat / Doctorant',
+          badge: 'Candidat au Doctorat',
           icon: <GraduationCap className="w-4 h-4 text-neutral-800" />,
         };
+      case 'DOCTORANT':
+        return {
+          label: 'Espace Doctorant',
+          badge: 'Doctorant Inscrit',
+          icon: <GraduationCap className="w-4 h-4 text-emerald-700" />,
+        };
+      case 'SUPERVISOR':
       case 'directeur_these':
         return {
           label: 'Espace Directeur de Thèse',
           badge: 'Directeur de Thèse',
           icon: <UserCheck className="w-4 h-4 text-neutral-800" />,
         };
+      case 'STRUCTURE_DIRECTOR':
       case 'directeur_structure':
         return {
-          label: 'Espace Direction de Structure',
-          badge: 'Direction CED / Structure',
+          label: 'Direction de Structure',
+          badge: 'Directeur de Laboratoire',
           icon: <Shield className="w-4 h-4 text-neutral-800" />,
+        };
+      case 'CED_ADMIN':
+        return {
+          label: 'Administration CED',
+          badge: 'Responsable CED USMBA',
+          icon: <Shield className="w-4 h-4 text-neutral-900" />,
+        };
+      case 'SYSTEM_ADMIN':
+        return {
+          label: 'Administration Système',
+          badge: 'Administrateur Global',
+          icon: <ShieldAlert className="w-4 h-4 text-neutral-900" />,
         };
       default:
         return {
@@ -46,6 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
     setCurrentView(view);
     setMobileMenuOpen(false);
     setProfileDropdownOpen(false);
+    setNotificationsOpen(false);
   };
 
   const roleInfo = getRoleDetails(role);
@@ -117,61 +169,128 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
         {/* Desktop User Account & Profile Menu */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
           {currentUser ? (
-            <div className="relative">
-              <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2.5 p-1.5 pl-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors focus:outline-hidden"
-              >
-                <div className="text-right">
-                  <div className="text-xs font-bold text-neutral-900 leading-tight">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-[10px] text-neutral-500 font-mono truncate max-w-[170px]">
-                    {currentUser.email}
-                  </div>
-                </div>
+            <div className="flex items-center gap-2">
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotificationsOpen(!notificationsOpen);
+                    setProfileDropdownOpen(false);
+                  }}
+                  className="p-2 border border-neutral-200 rounded-xl hover:bg-neutral-50 text-neutral-700 relative transition-colors focus:outline-hidden"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                      {unreadNotificationsCount}
+                    </span>
+                  )}
+                </button>
 
-                <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xs">
-                  {currentUser.firstName?.charAt(0) || currentUser.name.charAt(0)}
-                </div>
-
-                <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
-              </button>
-
-              {/* Profile dropdown */}
-              {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white border border-neutral-200 rounded-2xl shadow-xl p-3 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="p-2.5 bg-neutral-50 rounded-xl space-y-1 text-xs border border-neutral-100">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                      Compte actif
+                {/* Notifications Dropdown */}
+                {notificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-neutral-200 rounded-2xl shadow-xl p-3 space-y-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+                      <span className="text-xs font-bold text-neutral-900">Notifications</span>
+                      {unreadNotificationsCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={markAllNotificationsAsRead}
+                          className="text-[10px] text-neutral-500 hover:text-neutral-900 underline"
+                        >
+                          Tout marquer comme lu
+                        </button>
+                      )}
                     </div>
-                    <div className="font-bold text-neutral-900">{currentUser.name}</div>
-                    <div className="text-[11px] text-neutral-500 font-mono truncate">{currentUser.email}</div>
-                    <div className="pt-1 flex items-center gap-1.5 text-[11px] text-neutral-700 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span>{roleInfo.badge}</span>
+
+                    <div className="max-h-72 overflow-y-auto space-y-1.5 divide-y divide-neutral-50">
+                      {notifications.length === 0 ? (
+                        <p className="text-xs text-neutral-400 text-center py-4">Aucune notification.</p>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            onClick={() => markNotificationAsRead(n.id)}
+                            className={`p-2.5 rounded-xl cursor-pointer transition-colors text-xs ${
+                              n.isRead ? 'bg-white opacity-75' : 'bg-neutral-50 border border-neutral-200/60 font-medium'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-bold text-neutral-900">{n.title}</span>
+                              <span className="text-[10px] text-neutral-400 font-mono">
+                                {n.createdAt ? n.createdAt.split('T')[0] : ''}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-neutral-600 leading-snug">{n.message}</p>
+                          </div>
+                        ))
+                      )}
                     </div>
-                    {currentUser.cin && (
-                      <div className="text-[10px] text-neutral-500 font-mono">
-                        CIN : {currentUser.cin}
+                  </div>
+                )}
+              </div>
+
+              {/* User Profile dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setProfileDropdownOpen(!profileDropdownOpen);
+                    setNotificationsOpen(false);
+                  }}
+                  className="flex items-center gap-2.5 p-1.5 pl-3 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors focus:outline-hidden"
+                >
+                  <div className="text-right">
+                    <div className="text-xs font-bold text-neutral-900 leading-tight">
+                      {currentUser.name}
+                    </div>
+                    <div className="text-[10px] text-neutral-500 font-mono truncate max-w-[170px]">
+                      {currentUser.email}
+                    </div>
+                  </div>
+
+                  <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 font-bold text-xs">
+                    {currentUser.firstName?.charAt(0) || currentUser.name.charAt(0)}
+                  </div>
+
+                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+                </button>
+
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-neutral-200 rounded-2xl shadow-xl p-3 space-y-3 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="p-2.5 bg-neutral-50 rounded-xl space-y-1 text-xs border border-neutral-100">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                        Compte actif
                       </div>
-                    )}
-                  </div>
+                      <div className="font-bold text-neutral-900">{currentUser.name}</div>
+                      <div className="text-[11px] text-neutral-500 font-mono truncate">{currentUser.email}</div>
+                      <div className="pt-1 flex items-center gap-1.5 text-[11px] text-neutral-700 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>{roleInfo.badge}</span>
+                      </div>
+                      {currentUser.cin && (
+                        <div className="text-[10px] text-neutral-500 font-mono">
+                          CIN : {currentUser.cin}
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="pt-1 border-t border-neutral-100">
-                    <button
-                      onClick={() => {
-                        logout();
-                        setProfileDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Se déconnecter</span>
-                    </button>
+                    <div className="pt-1 border-t border-neutral-100">
+                      <button
+                        onClick={() => {
+                          logout();
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Se déconnecter</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">

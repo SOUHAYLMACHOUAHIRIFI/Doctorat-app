@@ -36,21 +36,24 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     { type: 'cin', label: '4. Carte d’Identité Nationale (CIN)' },
   ];
 
-  const handleDecisionSubmit = () => {
+  const handleDecisionSubmit = async () => {
     setIsSubmitting(true);
-    evaluateApplicationSupervisor(
-      application.id,
-      decision,
-      grade.trim(),
-      feedback.trim() ||
-        (decision === 'favorable'
-          ? 'Dossier académique recevable. Prérequis méthodologiques et scientifiques validés.'
-          : decision === 'a_corriger'
-          ? 'Pièces à renouveler ou clarifications requises sur le cursus.'
-          : 'Candidature non retenue lors des délibérations pédagogiques.')
-    );
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await evaluateApplicationSupervisor(
+        application.id,
+        decision,
+        grade.trim(),
+        feedback.trim() ||
+          (decision === 'favorable'
+            ? 'Dossier académique recevable. Prérequis méthodologiques et scientifiques validés.'
+            : decision === 'a_corriger'
+            ? 'Pièces à renouveler ou clarifications requises sur le cursus.'
+            : 'Candidature non retenue lors des délibérations pédagogiques.')
+      );
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenDocument = (doc: CandidateDocument) => {

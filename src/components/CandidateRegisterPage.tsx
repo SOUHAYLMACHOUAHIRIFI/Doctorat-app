@@ -52,21 +52,25 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
     }
 
     setIsSubmitting(true);
-    const result = registerCandidate({
-      email: cleanEmail,
-      nom: nom.trim(),
-      prenom: prenom.trim(),
-      phone: phone.trim(),
-      cin: cin.trim().toUpperCase(),
-      password: password.trim(),
-      etablissementOrigine,
-      diplomeOrigine: diplomeOrigine.trim(),
-    });
+    try {
+      const result = await registerCandidate({
+        email: cleanEmail,
+        nom: nom.trim(),
+        prenom: prenom.trim(),
+        phone: phone.trim(),
+        cin: cin.trim().toUpperCase(),
+        password: password.trim(),
+        etablissementOrigine,
+        diplomeOrigine: diplomeOrigine.trim(),
+      });
 
-    setIsSubmitting(false);
-
-    if (!result.success) {
-      setError(result.message);
+      if (!result.success) {
+        setError(result.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l’inscription.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

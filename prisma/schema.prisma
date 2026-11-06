@@ -1,0 +1,393 @@
+// Prisma Schema for GCD USMBA (Gestion du Cycle Doctoral - Université Sidi Mohamed Ben Abdellah)
+// Database Engine: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleType {
+  CANDIDATE
+  DOCTORANT
+  SUPERVISOR
+  STRUCTURE_DIRECTOR
+  CED_ADMIN
+  SYSTEM_ADMIN
+}
+
+enum DocumentStatus {
+  NON_DEPOSE
+  DEPOSE
+  EN_VERIFICATION
+  A_CORRIGER
+  VALIDE
+  REJETE
+}
+
+enum ApplicationStep {
+  PROFIL_ET_DOCUMENTS    // 1. Profil & 4 Pièces
+  CANDIDATURE_SOUMISE    // 2. Choix du sujet & Dépôt
+  VERIFICATION_DOSSIER   // 3. Vérification administrative
+  EVALUATION_DIRECTEUR   // 4. Évaluation pédagogique encadrant
+  VALIDATION_STRUCTURE   // 5. Examen par la commission Structure / CED
+  COMMISSION_DOCTORALE   // 6. Délibération officielle
+  DECISION_FINALE        // 7. Admission ou Refus final
+}
+
+enum ApplicationStatus {
+  BROUILLON
+  SOUMIS
+  EN_VERIFICATION
+  A_CORRIGER
+  AVIS_FAVORABLE
+  AVIS_DEFAVORABLE
+  VALIDE_STRUCTURE
+  REJETE_STRUCTURE
+  ADMIS
+  REFUSE
+}
+
+enum TopicStatus {
+  PROPOSE
+  EN_EXAMEN_STRUCTURE
+  VALIDE
+  REJETE
+  CLOTURE
+}
+
+enum ReEnrollmentStatus {
+  EN_ATTENTE_ENCADRANT
+  AVIS_FAVORABLE_ENCADRANT
+  A_CORRIGER_ENCADRANT
+  AVIS_DEFAVORABLE_ENCADRANT
+  VALIDE_CED
+  REJETE_CED
+}
+
+// 1. Users
+model User {
+  id              String        @id @default(uuid())
+  email           String        @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  cin             String        @unique
+  phone           String?
+  establishment   String?       // FST Fès, FS Dhar El Mahraz, ENSA Fès, etc.
+  laboratory      String?
+  role            RoleType      @default(CANDIDATE)
+  isActive        Boolean       @default(true)
+  isEmailVerified Boolean       @default(false)
+  emailToken      String?
+  resetToken      String?
+  resetExpires    DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  candidateProfile Candidate?
+  doctorantProfile DoctoralStudent?
+  supervisorProfile Supervisor?
+  structureDirector ResearchStructure? @relation("StructureDirector")
+  cedAdmin         DoctoralCenter?     @relation("CedDirector")
+  
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  reviewedDocs     DocumentReview[]
+  decisionsMade    ApplicationDecision[]
+
+  @@index([email])
+  @@index([role])
+  @@index([cin])
+}
+
+// 2. Roles & Permissions (RBAC metadata)
+model Role {
+  id          String       @id @default(uuid())
+  name        RoleType     @unique
+  description String
+  permissions Permission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. "topics:create", "applications:evaluate", "docs:validate"
+  description String
+  roles       Role[]
+}
+
+// 3. Candidates
+model Candidate {
+  id                  String               @id @default(uuid())
+  userId              String               @unique
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  etablissementOrigine String
+  diplomeOrigine      String
+  mentionDiplome      String?
+  anneeObtention      Int?
+  applications        Application[]
+  documents           ApplicationDocument[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+// 4. Doctoral Students (Admitted candidates)
+model DoctoralStudent {
+  id                 String               @id @default(uuid())
+  userId             String               @unique
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cneNumber          String?              @unique
+  thesisTitle        String
+  topicId            String?
+  supervisorId       String
+  supervisor         Supervisor           @relation(fields: [supervisorId], references: [id])
+  structureId        String
+  structure          ResearchStructure    @relation(fields: [structureId], references: [id])
+  enrollmentYear     Int                  @default(1)
+  enrollments        Enrollment[]
+  reEnrollments      ReEnrollment[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+// 5. Supervisors (Directeurs de Thèse)
+model Supervisor {
+  id                String             @id @default(uuid())
+  userId            String             @unique
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grade             String             @default("Professeur de l'Enseignement Supérieur")
+  specialty         String?
+  structureId       String?
+  structure         ResearchStructure? @relation(fields: [structureId], references: [id])
+  topics            ResearchTopic[]
+  doctoralStudents  DoctoralStudent[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+}
+
+// 6. Research Structures (Laboratoires & Équipes)
+model ResearchStructure {
+  id               String            @id @default(uuid())
+  name             String            @unique
+  code             String            @unique
+  establishment    String            // FST Fès, ENSA, FSDM, etc.
+  cedId            String
+  ced              DoctoralCenter    @relation(fields: [cedId], references: [id])
+  directorId       String?           @unique
+  director         User?             @relation("StructureDirector", fields: [directorId], references: [id])
+  supervisors      Supervisor[]
+  topics           ResearchTopic[]
+  doctoralStudents DoctoralStudent[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+// 7. Doctoral Centers (CED USMBA)
+model DoctoralCenter {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  description String?
+  directorId  String?             @unique
+  director    User?               @relation("CedDirector", fields: [directorId], references: [id])
+  structures  ResearchStructure[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+// 8. Research Topics (Sujets de Thèse)
+model ResearchTopic {
+  id                   String            @id @default(uuid())
+  title                String
+  summary              String
+  keywords             String[]
+  establishment        String
+  laboratoryId         String
+  laboratory           ResearchStructure @relation(fields: [laboratoryId], references: [id])
+  supervisorId         String
+  supervisor           Supervisor        @relation(fields: [supervisorId], references: [id])
+  slotsTotal           Int               @default(1)
+  slotsTaken           Int               @default(0)
+  status               TopicStatus       @default(PROPOSE)
+  structureFeedback    String?
+  applications         Application[]
+  academicYearId       String
+  academicYear         AcademicYear      @relation(fields: [academicYearId], references: [id])
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([supervisorId])
+  @@index([laboratoryId])
+  @@index([status])
+}
+
+// 9. Applications (Dossiers de Candidature)
+model Application {
+  id                   String                @id @default(uuid())
+  candidateId          String
+  candidate            Candidate             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  topicId              String
+  topic                ResearchTopic         @relation(fields: [topicId], references: [id])
+  step                 ApplicationStep       @default(CANDIDATURE_SOUMISE)
+  status               ApplicationStatus     @default(SOUMIS)
+  notes                String?
+  motivationLetter     String?
+  supervisorGrade      String?
+  supervisorFeedback   String?
+  structureFeedback    String?
+  commissionNotes      String?
+  documents            ApplicationDocument[]
+  decisions            ApplicationDecision[]
+  submittedAt          DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@unique([candidateId, topicId])
+  @@index([candidateId])
+  @@index([topicId])
+  @@index([status])
+}
+
+// 10. Document Types (4 pièces obligatoires et pièces complémentaires)
+model DocumentType {
+  id          String                @id @default(uuid())
+  code        String                @unique // baccalaureat, releve_notes, diplomes, cin
+  label       String
+  description String
+  isMandatory Boolean               @default(true)
+  documents   ApplicationDocument[]
+}
+
+// 11. Application Documents
+model ApplicationDocument {
+  id             String           @id @default(uuid())
+  candidateId    String
+  candidate      Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  applicationId  String?
+  application    Application?     @relation(fields: [applicationId], references: [id])
+  typeId         String
+  documentType   DocumentType     @relation(fields: [typeId], references: [id])
+  fileName       String
+  fileSize       String
+  fileMimeType   String
+  dataUrl        String?          // Stockage sécurisé Base64 ou URL de bucket
+  status         DocumentStatus   @default(DEPOSE)
+  rejectionReason String?
+  correctionNotes String?
+  captureMethod  String           @default("upload") // camera or upload
+  reviews        DocumentReview[]
+  uploadedAt     DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+// 12. Document Reviews (Validation / Rejet / Demande de correction)
+model DocumentReview {
+  id             String              @id @default(uuid())
+  documentId     String
+  document       ApplicationDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  reviewerId     String
+  reviewer       User                @relation(fields: [reviewerId], references: [id])
+  previousStatus DocumentStatus
+  newStatus      DocumentStatus
+  reason         String?
+  reviewedAt     DateTime            @default(now())
+}
+
+// 13. Academic Years (Années Universitaires dynamiques)
+model AcademicYear {
+  id               String          @id @default(uuid())
+  code             String          @unique // e.g. "2026-2027"
+  isCurrent        Boolean         @default(false)
+  campaignOpen     Boolean         @default(true)
+  campaignDeadline DateTime?
+  topics           ResearchTopic[]
+  enrollments      Enrollment[]
+  reEnrollments    ReEnrollment[]
+  createdAt        DateTime        @default(now())
+}
+
+// 14. Enrollments (Inscriptions initiales)
+model Enrollment {
+  id             String          @id @default(uuid())
+  studentId      String
+  student        DoctoralStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId String
+  academicYear   AcademicYear    @relation(fields: [academicYearId], references: [id])
+  validatedAt    DateTime        @default(now())
+}
+
+// 15. Re-Enrollments (Demandes annuelles de réinscription)
+model ReEnrollment {
+  id                  String             @id @default(uuid())
+  studentId           String
+  student             DoctoralStudent    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  academicYearId      String
+  academicYear        AcademicYear       @relation(fields: [academicYearId], references: [id])
+  yearNumber          Int                // 2ème, 3ème, 4ème année...
+  summary             String
+  publicationsCount   Int                @default(0)
+  communicationsCount Int                @default(0)
+  progressPercentage  Int                @default(0)
+  reportFileName      String?
+  reportDataUrl       String?
+  supervisorFeedback  String?
+  status              ReEnrollmentStatus @default(EN_ATTENTE_ENCADRANT)
+  submittedAt         DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@unique([studentId, academicYearId])
+}
+
+// 16. Application Decisions (Avis encadrant & validation structure)
+model ApplicationDecision {
+  id            String            @id @default(uuid())
+  applicationId String
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  deciderId     String
+  decider       User              @relation(fields: [deciderId], references: [id])
+  stage         String            // SUPERVISOR_EVALUATION, STRUCTURE_VALIDATION, CED_FINAL
+  decision      String            // FAVORABLE, DEFAVORABLE, A_CORRIGER, VALIDE, REJETE
+  notes         String?
+  grade         String?
+  createdAt     DateTime          @default(now())
+}
+
+// 17. Notifications
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, WARNING, SUCCESS, URGENT
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+// 18. Audit Logs (Traçabilité complète des actions sensibles)
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userEmail  String
+  userRole   String
+  action     String   // LOGIN, REGISTER, SUBMIT_APPLICATION, EVALUATE_CANDIDATE, VALIDATE_STRUCTURE, etc.
+  entityType String   // User, Application, Document, Topic, ReEnrollment
+  entityId   String?
+  details    String?  // JSON stringified metadata
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userEmail])
+  @@index([action])
+  @@index([createdAt])
+}

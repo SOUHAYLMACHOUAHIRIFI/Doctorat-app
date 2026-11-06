@@ -19,11 +19,11 @@ export const ReRegistrationModal: React.FC<ReRegistrationModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!summary.trim()) return;
 
-    addReRegistration(
+    await addReRegistration(
       year,
       summary.trim(),
       Number(pubs) || 0,

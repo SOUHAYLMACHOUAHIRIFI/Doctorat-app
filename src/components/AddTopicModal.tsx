@@ -20,11 +20,11 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    addTopic({
+    await addTopic({
       title: title.trim(),
       establishment,
       laboratory: laboratory.trim() || 'Laboratoire de Recherche USMBA',
@@ -36,7 +36,7 @@ export const AddTopicModal: React.FC<AddTopicModalProps> = ({ isOpen, onClose })
         .map((k) => k.trim())
         .filter(Boolean),
       summary: summary.trim() || 'Descriptif du sujet de recherche pour le cycle doctoral.',
-      status: 'valide', // Vert
+      status: 'valide',
       slotsTotal: Number(slotsTotal) || 1,
     });
 

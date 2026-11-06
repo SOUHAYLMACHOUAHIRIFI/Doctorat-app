@@ -1,4 +1,11 @@
 export type Role =
+  | 'CANDIDATE'
+  | 'DOCTORANT'
+  | 'SUPERVISOR'
+  | 'STRUCTURE_DIRECTOR'
+  | 'CED_ADMIN'
+  | 'SYSTEM_ADMIN'
+  // Backward compatibility aliases
   | 'candidat'
   | 'directeur_these'
   | 'directeur_structure';
@@ -17,23 +24,27 @@ export interface User {
   laboratory?: string;
   diplomeOrigine?: string;
   etablissementOrigine?: string;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
+  lastLoginAt?: string;
 }
 
-export type TopicStatus = 'valide' | 'en_attente' | 'cloture';
-export type StructureValidationStatus = 'en_examen' | 'approuve' | 'rejete';
+export type TopicStatus = 'valide' | 'en_attente' | 'cloture' | 'PROPOSE' | 'EN_EXAMEN_STRUCTURE' | 'VALIDE' | 'REJETE' | 'CLOTURE';
+export type StructureValidationStatus = 'en_examen' | 'approuve' | 'rejete' | 'APPROVE' | 'REJECT';
 
 export interface ThesisTopic {
   id: string;
   title: string;
   establishment: string; // e.g. FST Fès, FS Dhar El Mahraz, ENSA Fès
-  laboratory: string; // e.g. LISAC, LERMA, LIAS
+  laboratory: string; // e.g. LISAC, LERMA
+  laboratoryId?: string;
   supervisorId: string;
   supervisorName: string;
   supervisorEmail?: string;
   keywords: string[];
   summary: string;
   status: TopicStatus;
-  structureValidationStatus: StructureValidationStatus;
+  structureValidationStatus?: StructureValidationStatus;
   structureFeedback?: string;
   slotsTotal: number;
   slotsTaken: number;
@@ -41,8 +52,7 @@ export interface ThesisTopic {
   updatedAt?: string;
 }
 
-export type ApplicationStep = 1 | 2 | 3 | 4 | 5;
-// 1. Inscription Dossier ➔ 2. Vérification Pièces ➔ 3. Evaluation Directeur Thèse ➔ 4. Validation Structure ➔ 5. Admission Finale
+export type ApplicationStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type ApplicationStatus =
   | 'soumis'
@@ -52,21 +62,47 @@ export type ApplicationStatus =
   | 'a_corriger'
   | 'validation_structure'
   | 'admis'
-  | 'refuse';
+  | 'refuse'
+  | 'BROUILLON'
+  | 'SOUMIS'
+  | 'EN_VERIFICATION'
+  | 'A_CORRIGER'
+  | 'AVIS_FAVORABLE'
+  | 'AVIS_DEFAVORABLE'
+  | 'VALIDE_STRUCTURE'
+  | 'REJETE_STRUCTURE'
+  | 'ADMIS'
+  | 'REFUSE';
 
 export type DocumentType = 'baccalaureat' | 'releve_notes' | 'diplomes' | 'cin';
 
+export type DocumentStatus =
+  | 'NON_DEPOSE'
+  | 'DEPOSE'
+  | 'EN_VERIFICATION'
+  | 'A_CORRIGER'
+  | 'VALIDE'
+  | 'REJETE'
+  | 'valide'
+  | 'en_attente'
+  | 'a_corriger';
+
 export interface CandidateDocument {
   id: string;
-  candidateEmail: string;
+  candidateEmail?: string;
+  candidateId?: string;
+  applicationId?: string;
   type: DocumentType;
+  typeCode?: string;
   title: string;
   fileName: string;
   uploadedAt: string;
   fileSize: string;
-  status: 'valide' | 'en_attente' | 'a_corriger';
+  status: DocumentStatus;
+  rejectionReason?: string;
+  correctionNotes?: string;
   previewUrl?: string;
-  dataUrl?: string; // Base64 data from live webcam camera scan or local upload
+  dataUrl?: string; // Base64 data from live webcam scan or file upload
   captureMethod?: 'upload' | 'camera';
 }
 
@@ -89,16 +125,18 @@ export interface CandidateApplication {
   status: ApplicationStatus;
   currentStep: ApplicationStep;
   submittedDate: string;
-  documents: CandidateDocument[]; // 4 mandatory pieces attached directly to application
+  documents: CandidateDocument[];
   cvUrl?: string;
   projetUrl?: string;
   activityReport?: string;
   notes?: string;
-  supervisorDecision?: 'favorable' | 'defavorable' | 'a_corriger';
-  supervisorFeedback?: string; // Remarques pédagogiques de l'encadrant
-  supervisorGrade?: string; // Note ou appréciation
-  structureDecision?: 'valide' | 'rejete';
-  structureFeedback?: string;  // Remarques de la commission de structure
+  motivationLetter?: string;
+  supervisorDecision?: 'favorable' | 'defavorable' | 'a_corriger' | 'FAVORABLE' | 'DEFAVORABLE' | 'A_CORRIGER';
+  supervisorFeedback?: string;
+  supervisorGrade?: string;
+  structureDecision?: 'valide' | 'rejete' | 'VALIDE' | 'REJETE';
+  structureFeedback?: string;
+  commissionNotes?: string;
 }
 
 export interface ReRegistration {
@@ -109,10 +147,21 @@ export interface ReRegistration {
   thesisTitle: string;
   supervisorName: string;
   establishment: string;
-  year: number; // 2ème, 3ème, 4ème année
+  year: number; // 2, 3, 4, 5
   submittedDate: string;
-  status: 'en_attente_encadrant' | 'valide_encadrant' | 'valide_structure' | 'a_corriger';
+  status:
+    | 'en_attente_encadrant'
+    | 'valide_encadrant'
+    | 'valide_structure'
+    | 'a_corriger'
+    | 'EN_ATTENTE_ENCADRANT'
+    | 'AVIS_FAVORABLE_ENCADRANT'
+    | 'A_CORRIGER_ENCADRANT'
+    | 'AVIS_DEFAVORABLE_ENCADRANT'
+    | 'VALIDE_CED'
+    | 'REJETE_CED';
   supervisorNotes?: string;
+  supervisorFeedback?: string;
   activityReport: {
     summary: string;
     publicationsCount: number;
@@ -120,5 +169,54 @@ export interface ReRegistration {
     progressPercentage: number;
     fileName: string;
     dataUrl?: string;
+  };
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'URGENT';
+  isRead: boolean;
+  link?: string;
+  createdAt: string;
+}
+
+export interface AppAuditLog {
+  id: string;
+  userId?: string;
+  userEmail: string;
+  userRole: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details?: Record<string, any>;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface DashboardStats {
+  candidates: number;
+  doctoralStudents: number;
+  supervisors: number;
+  topics: {
+    total: number;
+    validated: number;
+    pending: number;
+  };
+  applications: {
+    total: number;
+    admitted: number;
+    favorable: number;
+    pending: number;
+  };
+  reEnrollments: {
+    total: number;
+    validated: number;
+  };
+  documents: {
+    total: number;
+    validated: number;
   };
 }

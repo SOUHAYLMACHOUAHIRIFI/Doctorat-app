@@ -44,6 +44,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     documents,
     uploadCandidateDocument,
     deleteCandidateDocument,
+    resetCandidateDossier,
+    seedCandidateDocuments,
     updateUserProfile,
     openAttachment,
     showToast,
@@ -51,6 +53,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
   // Wizard Tab: 1. documents & profil -> 2. catalogue -> 3. suivi
   const [activeStep, setActiveStep] = useState<'documents' | 'catalogue' | 'suivi'>('documents');
+  const [previewCatalogueWithoutDocs, setPreviewCatalogueWithoutDocs] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEstablishment, setSelectedEstablishment] = useState<string>('Tous');
 
@@ -282,6 +285,41 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         </div>
       )}
 
+      {/* Quick Demonstration & Simulation Bar for Evaluator */}
+      {currentUser && (
+        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="font-semibold text-neutral-900">Mode Démonstration & Test du flux :</span>
+            <span className="text-neutral-500 hidden sm:inline">Vérifiez le verrouillage 0/4 vs 4/4 en 1 clic</span>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => {
+                resetCandidateDossier();
+                setActiveStep('documents');
+                setPreviewCatalogueWithoutDocs(false);
+              }}
+              className="px-2.5 py-1.5 bg-white border border-neutral-300 rounded-xl text-[11px] font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors shadow-2xs"
+            >
+              🔄 Dossier vierge (0/4 scannées)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                seedCandidateDocuments();
+                setActiveStep('catalogue');
+              }}
+              className="px-2.5 py-1.5 bg-neutral-900 text-white rounded-xl text-[11px] font-semibold hover:bg-neutral-800 transition-colors shadow-2xs"
+            >
+              ⚡ Simuler 4/4 pièces (Déverrouiller)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* CHRONOLOGICAL CANDIDATE WIZARD STEPS NAVIGATION */}
       <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-2 sm:p-2.5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -337,7 +375,12 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
           {/* STEP 2: CONSULTATION & RECHERCHE DES SUJETS DE THÈSE */}
           <button
             type="button"
-            onClick={() => setActiveStep('catalogue')}
+            onClick={() => {
+              setActiveStep('catalogue');
+              if (!isDossierComplet) {
+                setPreviewCatalogueWithoutDocs(false);
+              }
+            }}
             className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
               activeStep === 'catalogue'
                 ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
@@ -349,19 +392,28 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                   activeStep === 'catalogue'
                     ? 'bg-white text-neutral-900'
-                    : 'bg-neutral-100 text-neutral-700'
+                    : isDossierComplet
+                    ? 'bg-neutral-100 text-neutral-700'
+                    : 'bg-amber-100 text-amber-800'
                 }`}
               >
-                2
+                {isDossierComplet ? '2' : <Lock className="w-3.5 h-3.5" />}
               </div>
               <div className="min-w-0">
-                <div className="font-bold truncate">Étape 2 : Sujets de Thèse</div>
+                <div className="font-bold truncate flex items-center gap-1.5">
+                  <span>Étape 2 : Sujets de Thèse</span>
+                  {!isDossierComplet && (
+                    <span className={`text-[9px] font-bold px-1 rounded ${activeStep === 'catalogue' ? 'bg-amber-400 text-neutral-900' : 'bg-amber-100 text-amber-800'}`}>
+                      Verrouillé
+                    </span>
+                  )}
+                </div>
                 <div
                   className={`text-[10px] truncate ${
                     activeStep === 'catalogue' ? 'text-neutral-300' : 'text-neutral-500'
                   }`}
                 >
-                  Recherche & Consultation
+                  {isDossierComplet ? 'Recherche & Consultation' : 'Débloqué après 4/4 pièces'}
                 </div>
               </div>
             </div>
@@ -370,10 +422,12 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
                 activeStep === 'catalogue'
                   ? 'bg-white/20 text-white'
-                  : 'bg-neutral-100 text-neutral-700'
+                  : isDossierComplet
+                  ? 'bg-neutral-100 text-neutral-700'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
               }`}
             >
-              {filteredTopics.length} sujets
+              {isDossierComplet ? `${filteredTopics.length} sujets` : '🔒 4 pièces requises'}
             </span>
           </button>
 
@@ -411,7 +465,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               </div>
             </div>
 
-            {currentCandidateApp && (
+            {currentCandidateApp ? (
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
                   activeStep === 'suivi'
@@ -420,6 +474,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 }`}
               >
                 Actif
+              </span>
+            ) : (
+              <span className="text-[10px] text-neutral-400 shrink-0 ml-1">
+                En attente
               </span>
             )}
           </button>
@@ -804,35 +862,78 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
       {/* ========================================================================= */}
       {activeStep === 'catalogue' && (
         <div className="space-y-6">
-          {/* Warning banner if Step 1 is not complete */}
-          {!isDossierComplet ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-center gap-2.5 text-xs text-amber-900">
-                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>
-                  <strong>Candidature bloquée ({candidateDocsCount}/4 pièces scannées) :</strong> Vous
-                  devez obligatoirement scanner vos 4 pièces à l'Étape 1 pour pouvoir postuler.
-                </span>
+          {/* EXPLICIT LOCK SCREEN IF STEP 1 (4 PIECES) IS INCOMPLETE */}
+          {!isDossierComplet && !previewCatalogueWithoutDocs ? (
+            <div className="p-8 sm:p-12 border-2 border-dashed border-amber-300 rounded-3xl bg-amber-50/60 text-center space-y-5 shadow-xs">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-200 text-amber-900 flex items-center justify-center mx-auto shadow-xs">
+                <Lock className="w-8 h-8 text-amber-800" />
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveStep('documents')}
-                className="w-full sm:w-auto px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
-              >
-                Aller à l'Étape 1 (Scanner mes pièces)
-              </button>
+
+              <div className="max-w-xl mx-auto space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-3 py-1 rounded-md border border-amber-200">
+                  Accès Réservé · Étape 1 Non Complétée
+                </span>
+                <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mt-2">
+                  Étape 2 Verrouillée : 4 Pièces Justificatives Obligatoires
+                </h2>
+                <p className="text-xs text-neutral-600 leading-relaxed max-w-lg mx-auto">
+                  Conformément au règlement du cycle doctoral de l'Université Sidi Mohamed Ben Abdellah (USMBA), vous devez obligatoirement numériser vos <strong>4 pièces</strong> à l'<strong>Étape 1</strong> (Baccalauréat, Relevés de notes, Diplôme et Carte CIN) avant de pouvoir postuler à un sujet de thèse.
+                </p>
+
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white border border-amber-200 rounded-xl text-xs font-bold text-amber-900 shadow-2xs mt-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span>État actuel de vos pièces : {candidateDocsCount} sur 4 scannées</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep('documents')}
+                  className="w-full sm:w-auto px-6 py-3 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs flex items-center justify-center gap-2"
+                >
+                  <span>Aller à l'Étape 1 pour scanner mes 4 pièces</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewCatalogueWithoutDocs(true)}
+                  className="w-full sm:w-auto px-4 py-3 bg-white border border-neutral-300 text-neutral-700 hover:text-neutral-900 rounded-xl text-xs font-medium hover:bg-neutral-50 transition-colors"
+                >
+                  Aperçu en lecture seule des sujets (postulation bloquée)
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-              <div className="flex items-center gap-2 text-xs text-emerald-900">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>
-                  <strong>Dossier 4/4 prêt :</strong> Vous pouvez sélectionner un sujet ci-dessous et
-                  cliquer sur "Postuler". Vos documents y seront immédiatement associés.
-                </span>
-              </div>
-            </div>
-          )}
+            <>
+              {/* Banner depending on status */}
+              {!isDossierComplet ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5 text-xs text-amber-900">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>
+                      <strong>Mode consultation restreint ({candidateDocsCount}/4 pièces) :</strong> Vous
+                      devez obligatoirement scanner vos 4 pièces pour débloquer la postulation.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep('documents')}
+                    className="w-full sm:w-auto px-4 py-2 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors whitespace-nowrap shadow-xs"
+                  >
+                    Scanner mes 4 pièces (Étape 1)
+                  </button>
+                </div>
+              ) : (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2 text-xs text-emerald-900">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      <strong>Dossier 4/4 complet et certifié :</strong> Choisissez votre sujet ci-dessous et cliquez sur "Postuler". Vos documents y seront automatiquement attachés.
+                    </span>
+                  </div>
+                </div>
+              )}
 
           {/* Search Bar & Filters */}
           <div className="space-y-4">
@@ -964,13 +1065,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                             className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap shadow-xs ${
                               isDossierComplet
                                 ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-                                : 'bg-neutral-100 text-neutral-700 border border-neutral-300 hover:bg-neutral-200'
+                                : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
                             }`}
                           >
+                            {!isDossierComplet && <Lock className="w-3.5 h-3.5 text-amber-700" />}
                             <span>
-                              {isDossierComplet ? 'Postuler (Dossier prêt)' : 'Étape 1 requise (4 pièces)'}
+                              {isDossierComplet ? 'Postuler (Dossier prêt)' : 'Bloqué (4 pièces requises)'}
                             </span>
-                            <ArrowRight className="w-3.5 h-3.5" />
+                            {isDossierComplet && <ArrowRight className="w-3.5 h-3.5" />}
                           </button>
                         ) : (
                           <span className="text-xs text-neutral-400 italic">Places déjà pourvues</span>
@@ -982,6 +1084,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       )}
 

@@ -94,6 +94,8 @@ export interface AppContextType {
     captureMethod?: 'camera' | 'upload'
   ) => CandidateDocument | undefined;
   deleteCandidateDocument: (docId: string) => void;
+  resetCandidateDossier: () => void;
+  seedCandidateDocuments: () => void;
 
   // Re-registrations
   reRegistrations: ReRegistration[];
@@ -120,7 +122,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Directory of users with localStorage persistence
   const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('gcd_users_v3');
+    const saved = localStorage.getItem('gcd_users_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -129,7 +131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Current logged in user (starts with demo candidate Youssef, or saved user)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('gcd_current_user_v3');
+    const saved = localStorage.getItem('gcd_current_user_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -140,7 +142,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Topics
   const [topics, setTopics] = useState<ThesisTopic[]>(() => {
-    const saved = localStorage.getItem('gcd_topics_v3');
+    const saved = localStorage.getItem('gcd_topics_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -149,7 +151,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Applications
   const [applications, setApplications] = useState<CandidateApplication[]>(() => {
-    const saved = localStorage.getItem('gcd_applications_v3');
+    const saved = localStorage.getItem('gcd_applications_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -158,7 +160,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Documents
   const [documents, setDocuments] = useState<CandidateDocument[]>(() => {
-    const saved = localStorage.getItem('gcd_documents_v3');
+    const saved = localStorage.getItem('gcd_documents_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -167,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Re-registrations
   const [reRegistrations, setReRegistrations] = useState<ReRegistration[]>(() => {
-    const saved = localStorage.getItem('gcd_rereg_v3');
+    const saved = localStorage.getItem('gcd_rereg_v5');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
@@ -196,31 +198,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync state to localStorage
   useEffect(() => {
-    localStorage.setItem('gcd_users_v3', JSON.stringify(registeredUsers));
+    localStorage.setItem('gcd_users_v5', JSON.stringify(registeredUsers));
   }, [registeredUsers]);
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('gcd_current_user_v3', JSON.stringify(currentUser));
+      localStorage.setItem('gcd_current_user_v5', JSON.stringify(currentUser));
     } else {
-      localStorage.removeItem('gcd_current_user_v3');
+      localStorage.removeItem('gcd_current_user_v5');
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_topics_v3', JSON.stringify(topics));
+    localStorage.setItem('gcd_topics_v5', JSON.stringify(topics));
   }, [topics]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_applications_v3', JSON.stringify(applications));
+    localStorage.setItem('gcd_applications_v5', JSON.stringify(applications));
   }, [applications]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_documents_v3', JSON.stringify(documents));
+    localStorage.setItem('gcd_documents_v5', JSON.stringify(documents));
   }, [documents]);
 
   useEffect(() => {
-    localStorage.setItem('gcd_rereg_v3', JSON.stringify(reRegistrations));
+    localStorage.setItem('gcd_rereg_v5', JSON.stringify(reRegistrations));
   }, [reRegistrations]);
 
   // Strict Login Authentication (RBAC)
@@ -671,6 +673,73 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Document retiré.');
   };
 
+  const resetCandidateDossier = () => {
+    if (!currentUser) return;
+    const userEmail = currentUser.email.toLowerCase();
+    setDocuments((prev) => prev.filter((d) => d.candidateEmail.toLowerCase() !== userEmail));
+    setApplications((prev) => prev.filter((a) => a.candidateEmail.toLowerCase() !== userEmail));
+    showToast('Dossier candidat réinitialisé (0/4 pièces). Étape 1 active.');
+  };
+
+  const seedCandidateDocuments = () => {
+    if (!currentUser) return;
+    const userEmail = currentUser.email.toLowerCase();
+    const today = new Date().toISOString().split('T')[0];
+
+    const sampleDocs: CandidateDocument[] = [
+      {
+        id: `doc-${Date.now().toString(36)}-bac`,
+        candidateEmail: userEmail,
+        type: 'baccalaureat',
+        title: 'Diplôme du Baccalauréat',
+        fileName: 'BAC_Sciences_Maths_Certifie.pdf',
+        uploadedAt: today,
+        fileSize: '1.4 Mo',
+        status: 'valide',
+        captureMethod: 'upload',
+      },
+      {
+        id: `doc-${Date.now().toString(36)}-notes`,
+        candidateEmail: userEmail,
+        type: 'releve_notes',
+        title: 'Fiches et Relevés de Notes',
+        fileName: 'Releves_Notes_S1_S4_Master.pdf',
+        uploadedAt: today,
+        fileSize: '3.2 Mo',
+        status: 'valide',
+        captureMethod: 'upload',
+      },
+      {
+        id: `doc-${Date.now().toString(36)}-dip`,
+        candidateEmail: userEmail,
+        type: 'diplomes',
+        title: 'Diplômes (Licence / Master / Ingénieur)',
+        fileName: 'Diplome_Master_Recherche_USMBA.pdf',
+        uploadedAt: today,
+        fileSize: '2.1 Mo',
+        status: 'valide',
+        captureMethod: 'upload',
+      },
+      {
+        id: `doc-${Date.now().toString(36)}-cin`,
+        candidateEmail: userEmail,
+        type: 'cin',
+        title: 'Carte d’Identité Nationale (CIN)',
+        fileName: `Scan_CIN_${currentUser.cin || 'CD654321'}.pdf`,
+        uploadedAt: today,
+        fileSize: '0.9 Mo',
+        status: 'valide',
+        captureMethod: 'camera',
+      },
+    ];
+
+    setDocuments((prev) => [
+      ...prev.filter((d) => d.candidateEmail.toLowerCase() !== userEmail),
+      ...sampleDocs,
+    ]);
+    showToast('4 pièces certifiées générées avec succès (Dossier 4/4 complet).');
+  };
+
   // Re-registration
   const addReRegistration = (
     year: number,
@@ -760,6 +829,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         documents,
         uploadCandidateDocument,
         deleteCandidateDocument,
+        resetCandidateDossier,
+        seedCandidateDocuments,
         reRegistrations,
         addReRegistration,
         updateReRegistrationStatus,

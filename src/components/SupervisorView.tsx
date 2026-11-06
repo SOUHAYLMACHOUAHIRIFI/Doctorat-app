@@ -31,17 +31,23 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
       t.supervisorName === currentUser?.name ||
       (currentUser?.name && t.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
   );
-  const myApplications = applications.filter(
-    (a) =>
-      a.supervisorId === currentUser?.id ||
-      a.supervisorName === currentUser?.name ||
-      (currentUser?.name && a.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
-  );
-  const myReRegistrations = reRegistrations.filter(
-    (r) =>
-      r.supervisorName === currentUser?.name ||
-      (currentUser?.name && r.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
-  );
+  const myApplications =
+    currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'directeur_these'
+      ? applications
+      : applications.filter(
+          (a) =>
+            a.supervisorId === currentUser?.id ||
+            a.supervisorName === currentUser?.name ||
+            (currentUser?.name && a.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
+        );
+  const myReRegistrations =
+    currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'directeur_these'
+      ? reRegistrations
+      : reRegistrations.filter(
+          (r) =>
+            r.supervisorName === currentUser?.name ||
+            (currentUser?.name && r.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
+        );
 
   const getTopicStatusBadge = (status: ThesisTopic['status']) => {
     switch (status) {
@@ -335,7 +341,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
               <div className="block sm:hidden space-y-3">
                 {myApplications.map((app) => {
                   const candidateDocs = documents.filter(
-                    (d) => d.candidateEmail.toLowerCase() === app.candidateEmail.toLowerCase()
+                    (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
                   );
 
                   return (
@@ -411,7 +417,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
                   <tbody className="divide-y divide-neutral-100">
                     {myApplications.map((app) => {
                       const candidateDocs = documents.filter(
-                        (d) => d.candidateEmail.toLowerCase() === app.candidateEmail.toLowerCase()
+                        (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
                       );
 
                       return (

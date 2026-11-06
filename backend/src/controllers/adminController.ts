@@ -98,4 +98,40 @@ export const adminController = {
       academicYear: year,
     });
   },
+
+  createAcademicYear(req: AuthenticatedRequest, res: Response): void {
+    const { code, isCurrent, campaignOpen, campaignDeadline } = req.body;
+    if (!code || typeof code !== 'string') {
+      res.status(400).json({ success: false, message: 'Le code de l’année universitaire est obligatoire (ex: 2027-2028).' });
+      return;
+    }
+
+    const years = db.get('academicYears');
+    if (years.some((y) => y.code === code.trim())) {
+      res.status(400).json({ success: false, message: 'Cette année universitaire existe déjà.' });
+      return;
+    }
+
+    if (isCurrent) {
+      years.forEach((y) => (y.isCurrent = false));
+    }
+
+    const newYear = {
+      id: `ay-${Date.now().toString(36)}`,
+      code: code.trim(),
+      isCurrent: !!isCurrent,
+      campaignOpen: campaignOpen !== undefined ? !!campaignOpen : true,
+      campaignDeadline: campaignDeadline || undefined,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    years.push(newYear);
+    db.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Année universitaire ${newYear.code} créée avec succès.`,
+      academicYear: newYear,
+    });
+  },
 };

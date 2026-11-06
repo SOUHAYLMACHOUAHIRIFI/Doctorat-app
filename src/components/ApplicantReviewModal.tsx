@@ -26,7 +26,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     application.documents && application.documents.length > 0
       ? application.documents
       : documents.filter(
-          (d) => d.candidateEmail.toLowerCase() === application.candidateEmail.toLowerCase()
+          (d) => (d.candidateEmail || '').toLowerCase() === application.candidateEmail.toLowerCase()
         );
 
   const docTypes: { type: CandidateDocument['type']; label: string }[] = [

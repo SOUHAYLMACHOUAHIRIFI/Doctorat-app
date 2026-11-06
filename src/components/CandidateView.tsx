@@ -110,7 +110,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   const candidateDocs = useMemo(() => {
     if (!currentUser) return [];
     return documents.filter(
-      (d) => d.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()
+      (d) => (d.candidateEmail || '').toLowerCase() === currentUser.email.toLowerCase()
     );
   }, [documents, currentUser]);
 

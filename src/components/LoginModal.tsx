@@ -79,9 +79,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
     }
   };
 
-  const handleFillCredentials = (fEmail: string) => {
+  const handleSelectEmail = (fEmail: string) => {
     setEmail(fEmail);
-    setPassword('usmba2026');
+    setPassword('');
     setError(null);
     setSuccessMsg(null);
   };
@@ -242,16 +242,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
             <div className="flex items-center justify-between text-[11px]">
               <span className="font-bold text-neutral-700 flex items-center gap-1">
                 <Info className="w-3.5 h-3.5 text-neutral-500" />
-                <span>Comptes de test (Mot de passe : usmba2026)</span>
+                <span>Sélection rapide d’un compte institutionnel</span>
               </span>
               <span className="text-[10px] text-neutral-400 font-mono">6 Rôles RBAC</span>
             </div>
+            <p className="text-[11px] text-neutral-500">
+              Cliquez sur un profil pour pré-remplir l’email, puis entrez votre mot de passe pour vous authentifier.
+            </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
               {/* 1. CANDIDATE */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('youssef.elamrani@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('youssef.elamrani@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Candidat Youssef El Amrani"
               >
@@ -262,7 +265,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 2. DOCTORANT */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('salma.tazi@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('salma.tazi@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Doctorante Salma Tazi"
               >
@@ -273,7 +276,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 3. SUPERVISOR */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('karim.bennani@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('karim.bennani@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Directeur Pr. Karim Bennani"
               >
@@ -284,7 +287,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 4. STRUCTURE_DIRECTOR */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('dir.lisac@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('dir.lisac@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Directeur de Structure LISAC"
               >
@@ -295,7 +298,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 5. CED_ADMIN */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('ced.admin@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Responsable du Centre d’Études Doctorales"
               >
@@ -306,7 +309,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 6. SYSTEM_ADMIN */}
               <button
                 type="button"
-                onClick={() => handleFillCredentials('admin.system@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('admin.system@usmba.ac.ma')}
                 className="p-1.5 bg-white border border-neutral-200 rounded-lg hover:border-neutral-900 text-left transition-colors truncate shadow-2xs"
                 title="Administrateur Global du Système"
               >

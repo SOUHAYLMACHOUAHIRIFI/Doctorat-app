@@ -21,7 +21,7 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 

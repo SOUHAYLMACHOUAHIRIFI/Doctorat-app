@@ -21,6 +21,11 @@ export const authService = {
     const normalizedEmail = data.email.trim().toLowerCase();
     const normalizedCin = data.cin.trim().toUpperCase();
 
+    // Enforce institutional domain
+    if (!normalizedEmail.endsWith('@usmba.ac.ma')) {
+      throw new Error('L’inscription nécessite impérativement une adresse email institutionnelle (@usmba.ac.ma).');
+    }
+
     // Check existing email
     const existingByEmail = userRepository.findByEmail(normalizedEmail);
     if (existingByEmail) {

@@ -57,7 +57,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   // Retrieve current candidate documents
   const candidateDocs = documents.filter(
     (d) =>
-      d.candidateEmail.toLowerCase() ===
+      (d.candidateEmail || '').toLowerCase() ===
       (email.trim().toLowerCase() || currentUser?.email.toLowerCase())
   );
 

@@ -77,6 +77,14 @@ export const StructureDirectorView: React.FC = () => {
 
   // Filter topics
   const filteredTopics = topics.filter((t) => {
+    // Strict perimeter isolation: Structure Director only sees their structure's topics
+    if (!isSuperAdminOrCed && currentUser?.laboratory) {
+      const matchLab =
+        t.laboratory.toLowerCase().includes(currentUser.laboratory.toLowerCase()) ||
+        (t.laboratoryId && currentUser.laboratory.toLowerCase().includes(t.laboratoryId.toLowerCase()));
+      if (!matchLab) return false;
+    }
+
     const matchesEst = selectedEstablishment === 'Tous' || t.establishment === selectedEstablishment;
     const matchesVal =
       filterValidation === 'all' ||
@@ -92,6 +100,12 @@ export const StructureDirectorView: React.FC = () => {
 
   // Filter applications
   const filteredApplications = applications.filter((app) => {
+    // Strict perimeter isolation: Structure Director only sees applications for their structure
+    if (!isSuperAdminOrCed && currentUser?.laboratory) {
+      const matchLab = app.laboratory.toLowerCase().includes(currentUser.laboratory.toLowerCase());
+      if (!matchLab) return false;
+    }
+
     const matchesEst = selectedEstablishment === 'Tous' || app.establishment === selectedEstablishment;
     const matchesSearch =
       searchQuery.trim() === '' ||

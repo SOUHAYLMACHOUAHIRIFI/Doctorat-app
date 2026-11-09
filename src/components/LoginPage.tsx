@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   Info,
   UserPlus,
-  BookOpen,
   GraduationCap,
   UserCheck,
   Building2,
@@ -20,7 +19,7 @@ import { api } from '../services/api';
 
 interface LoginPageProps {
   onOpenRegister: () => void;
-  onOpenCatalogue: () => void;
+  onOpenCatalogue?: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCatalogue }) => {
@@ -278,9 +277,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
                 <span>Comptes institutionnels de test (évaluation)</span>
               </span>
             </div>
-            <p className="text-[11px] text-neutral-500 leading-snug">
-              Cliquez pour sélectionner un profil. Mot de passe académique : <strong className="text-neutral-800 font-mono">usmba2026</strong> (saisie manuelle et masquée obligatoire) :
-            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
               {/* Profile 1: Candidat */}
@@ -336,15 +332,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>Créer un compte candidat (@usmba.ac.ma)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onOpenCatalogue}
-              className="text-xs text-neutral-500 hover:text-neutral-800 flex items-center gap-1.5 transition-colors pt-1"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Consulter le catalogue des sujets en accès public</span>
             </button>
           </div>
         </div>

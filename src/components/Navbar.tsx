@@ -89,9 +89,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
         };
       default:
         return {
-          label: 'Catalogue des Sujets',
+          label: 'Portail Doctoral',
           badge: 'Portail Public',
-          icon: <BookOpen className="w-4 h-4 text-neutral-800" />,
+          icon: <Shield className="w-4 h-4 text-neutral-800" />,
         };
     }
   };
@@ -130,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
 
         {/* Center: Contextual Navigation Links according to logged-in user */}
         <nav className="hidden md:flex items-center gap-2">
-          {currentUser ? (
+          {currentUser && (
             <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-50 border border-neutral-200 rounded-xl">
               <span className="flex items-center gap-1.5 text-xs font-semibold text-neutral-800">
                 {roleInfo.icon}
@@ -140,44 +140,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
               <span className="text-[11px] text-neutral-500 font-medium">
                 {currentUser.establishment || 'FST Fès'}
               </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => handleNavClick('dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
-                  currentView === 'dashboard'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-                }`}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Connexion</span>
-              </button>
-
-              <button
-                onClick={() => handleNavClick('catalogue')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
-                  currentView === 'catalogue'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Catalogue des Sujets</span>
-              </button>
-
-              <button
-                onClick={() => handleNavClick('register_candidat')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
-                  currentView === 'register_candidat'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Inscription Candidat</span>
-              </button>
             </div>
           )}
         </nav>
@@ -309,7 +271,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => handleNavClick('register_candidat')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl transition-colors ${
+                  currentView === 'register_candidat'
+                    ? 'bg-neutral-900 text-white shadow-xs'
+                    : 'text-neutral-700 hover:text-neutral-900 hover:bg-neutral-50 border border-neutral-200 bg-white shadow-2xs'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Inscription Candidat</span>
+              </button>
+
               <button
                 onClick={onOpenLogin}
                 className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
@@ -402,18 +376,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
                 >
                   <LogIn className="w-4 h-4" />
                   <span>Portail de Connexion</span>
-                </button>
-
-                <button
-                  onClick={() => handleNavClick('catalogue')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
-                    currentView === 'catalogue'
-                      ? 'bg-neutral-900 text-white'
-                      : 'text-neutral-800 hover:bg-neutral-100'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Catalogue des Sujets de Thèse</span>
                 </button>
 
                 <button

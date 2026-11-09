@@ -114,7 +114,6 @@ const MainLayout: React.FC = () => {
           ) : (
             <LoginPage
               onOpenRegister={() => setCurrentView('register_candidat')}
-              onOpenCatalogue={() => setCurrentView('catalogue')}
             />
           )
         ) : (

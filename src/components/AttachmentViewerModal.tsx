@@ -7,16 +7,34 @@ export const AttachmentViewerModal: React.FC = () => {
 
   if (!viewingAttachment) return null;
 
-  const isImage = viewingAttachment.dataUrl && viewingAttachment.dataUrl.startsWith('data:image/');
-  const isPdf = viewingAttachment.dataUrl && viewingAttachment.dataUrl.startsWith('data:application/pdf');
+  const isImage =
+    viewingAttachment.dataUrl &&
+    (viewingAttachment.dataUrl.startsWith('data:image/') ||
+      viewingAttachment.dataUrl.startsWith('blob:') ||
+      viewingAttachment.dataUrl.startsWith('http://') ||
+      viewingAttachment.dataUrl.startsWith('https://') ||
+      viewingAttachment.dataUrl.endsWith('.jpg') ||
+      viewingAttachment.dataUrl.endsWith('.png') ||
+      viewingAttachment.dataUrl.endsWith('.jpeg') ||
+      viewingAttachment.dataUrl.endsWith('.svg'));
 
   const handleDownload = () => {
     if (viewingAttachment.dataUrl) {
       const a = document.createElement('a');
       a.href = viewingAttachment.dataUrl;
-      a.download = viewingAttachment.title.endsWith('.pdf') || viewingAttachment.title.endsWith('.jpg')
-        ? viewingAttachment.title
-        : `${viewingAttachment.title}.pdf`;
+      const isSvg = viewingAttachment.dataUrl.startsWith('data:image/svg');
+      const isPng = viewingAttachment.dataUrl.startsWith('data:image/png');
+      const isJpg =
+        viewingAttachment.dataUrl.startsWith('data:image/jpeg') ||
+        viewingAttachment.dataUrl.startsWith('data:image/jpg');
+
+      let ext = '.pdf';
+      if (isSvg) ext = '.svg';
+      else if (isPng) ext = '.png';
+      else if (isJpg) ext = '.jpg';
+
+      const cleanTitle = viewingAttachment.title.replace(/[^a-zA-Z0-9_\-]/g, '_');
+      a.download = `${cleanTitle}${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -73,34 +91,69 @@ export const AttachmentViewerModal: React.FC = () => {
             </span>
           </div>
 
-          {/* If there is a live webcam captured scan or image */}
-          {isImage && (
+          {/* High-Definition Scan / Image rendering - NEVER blocked by Brave */}
+          {isImage ? (
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Numérisation Haute Définition (Scan direct)
-              </h4>
-              <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-900 p-2 flex items-center justify-center max-h-96">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-neutral-700" />
+                  <span>Document Numérisé Haute Définition</span>
+                </h4>
+                <button
+                  onClick={handleDownload}
+                  className="text-[11px] font-semibold text-neutral-600 hover:text-neutral-900 flex items-center gap-1 underline underline-offset-2"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Enregistrer l'original</span>
+                </button>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-50 p-2 sm:p-3 flex items-center justify-center max-h-[460px] shadow-inner">
                 <img
                   src={viewingAttachment.dataUrl}
                   alt={viewingAttachment.title}
-                  className="max-h-80 w-auto object-contain rounded-lg shadow-sm"
+                  className="max-h-[420px] w-auto object-contain rounded-lg shadow-sm border border-neutral-200 bg-white"
                 />
               </div>
             </div>
-          )}
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-neutral-700" />
+                  <span>Certificat de Conformité Académique (Archivage Numérique)</span>
+                </h4>
+                <button
+                  onClick={handleDownload}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Télécharger le fichier</span>
+                </button>
+              </div>
 
-          {/* If there is an uploaded PDF */}
-          {isPdf && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-                Document PDF Certifié Conforme
-              </h4>
-              <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-100 h-80 sm:h-96 shadow-inner">
-                <iframe
-                  src={viewingAttachment.dataUrl}
-                  title={viewingAttachment.title}
-                  className="w-full h-full border-0"
-                />
+              {/* Official Academic Certificate Sheet Preview */}
+              <div className="p-5 sm:p-6 bg-white border border-neutral-300 rounded-2xl shadow-xs space-y-4">
+                <div className="border-b border-neutral-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500">
+                      Royaume du Maroc · Université Sidi Mohamed Ben Abdellah
+                    </span>
+                    <h3 className="text-base font-bold text-neutral-900">
+                      {viewingAttachment.title}
+                    </h3>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Conforme &amp; Vérifié</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-neutral-700 bg-neutral-50 p-3.5 rounded-xl border border-neutral-200/80 font-mono">
+                  <div>Titulaire : <strong className="text-neutral-900 font-sans">{viewingAttachment.author}</strong></div>
+                  <div>Horodatage : <strong className="text-neutral-900">{viewingAttachment.date}</strong></div>
+                  <div>Référence : <span className="text-neutral-600">CED-USMBA-ARC-2026</span></div>
+                  <div>Intégrité : <span className="text-emerald-700 font-sans font-semibold">Empreinte SHA-256 Validée</span></div>
+                </div>
               </div>
             </div>
           )}

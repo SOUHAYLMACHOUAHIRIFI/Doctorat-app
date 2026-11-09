@@ -7,24 +7,85 @@ import { ROLES, APPLICATION_STEPS, APPLICATION_STATUS, MANDATORY_DOCUMENT_TYPES 
 import { auditService } from './auditService';
 import { notificationService } from './notificationService';
 
+import { ApplicationDocumentEntity } from '../types';
+
+function populateApplicationWithDocuments(app: ApplicationEntity): ApplicationEntity {
+  const allDocs = db.get('documents');
+  const candidates = db.get('candidates');
+  const cand = candidates.find((c) => c.id === app.candidateId || c.userId === app.candidateId);
+  const users = db.get('users');
+  const candidateUser = cand
+    ? users.find((u) => u.id === cand.userId)
+    : users.find((u) => u.email.toLowerCase() === app.candidateEmail.toLowerCase());
+  const candidateEmail = (app.candidateEmail || candidateUser?.email || '').toLowerCase();
+
+  // Find all documents linked to this application or to this candidate
+  const matchedDocs = allDocs.filter((d) => {
+    if (d.applicationId && d.applicationId === app.id) return true;
+    if (app.candidateId && d.candidateId === app.candidateId) return true;
+    if (cand && (d.candidateId === cand.id || d.candidateId === cand.userId)) return true;
+    if (candidateUser && (d.candidateId === candidateUser.id || (d.candidateEmail && d.candidateEmail.toLowerCase() === candidateUser.email.toLowerCase()))) return true;
+    if (candidateEmail && d.candidateEmail && d.candidateEmail.toLowerCase() === candidateEmail) return true;
+    return false;
+  });
+
+  const typeMap: Record<string, string> = {
+    bac: 'baccalaureat',
+    baccalaureat: 'baccalaureat',
+    notes: 'releve_notes',
+    releve_notes: 'releve_notes',
+    releves_notes: 'releve_notes',
+    diplome: 'diplomes',
+    diplomes: 'diplomes',
+    cin: 'cin',
+  };
+
+  const titleMap: Record<string, string> = {
+    baccalaureat: 'Diplôme du Baccalauréat',
+    releve_notes: 'Relevés de Notes (Licence & Master)',
+    diplomes: 'Diplômes universitaires',
+    cin: 'Carte d’Identité Nationale (CIN)',
+  };
+
+  const docsByType = new Map<string, ApplicationDocumentEntity>();
+  for (const doc of matchedDocs) {
+    const rawType = (doc.typeCode || (doc as any).type || '').toLowerCase();
+    const normalizedType = typeMap[rawType] || rawType;
+    if (!docsByType.has(normalizedType)) {
+      docsByType.set(normalizedType, {
+        ...doc,
+        typeCode: normalizedType,
+        title: doc.title || titleMap[normalizedType] || 'Document Justificatif',
+        candidateEmail: doc.candidateEmail || candidateEmail,
+        status: doc.status || 'VALIDE',
+      });
+    }
+  }
+
+  return {
+    ...app,
+    documents: Array.from(docsByType.values()),
+  };
+}
+
 export const applicationService = {
   getApplications(user: SafeUser): ApplicationEntity[] {
+    let result: ApplicationEntity[] = [];
+
     // 1. Candidate: strictly their own application
     if (user.role === ROLES.CANDIDATE) {
       const cand = db.get('candidates').find((c) => c.userId === user.id);
-      if (!cand) return [];
-      return applicationRepository.findByCandidate(cand.id);
+      result = cand ? applicationRepository.findByCandidate(cand.id) : [];
     }
 
     // 2. Doctorant: their application history
-    if (user.role === ROLES.DOCTORANT) {
+    else if (user.role === ROLES.DOCTORANT) {
       const cand = db.get('candidates').find((c) => c.userId === user.id);
-      if (!cand) return [];
-      return applicationRepository.findByCandidate(cand.id);
+      result = cand ? applicationRepository.findByCandidate(cand.id) : [];
     }
 
     // 3. Supervisor: strictly applications for their own topics
-    if (user.role === ROLES.SUPERVISOR) {
+    else if (user.role === ROLES.SUPERVISOR) {
       const supervisors = db.get('supervisors');
       const sup = supervisors.find((s) => s.userId === user.id || s.id === user.id);
       const allApps = applicationRepository.findAll();
@@ -35,7 +96,7 @@ export const applicationService = {
 
       const userFullName = `${user.firstName} ${user.lastName}`.toLowerCase();
 
-      return allApps.filter((a) => {
+      result = allApps.filter((a) => {
         if (sup && a.supervisorId === sup.id) return true;
         if (a.supervisorId === user.id) return true;
         if (myTopicIds.includes(a.topicId)) return true;
@@ -45,20 +106,25 @@ export const applicationService = {
     }
 
     // 4. Structure Director: strictly applications belonging to their laboratory
-    if (user.role === ROLES.STRUCTURE_DIRECTOR) {
+    else if (user.role === ROLES.STRUCTURE_DIRECTOR) {
       const structures = db.get('structures');
       const managed = structures.filter((s) => s.directorId === user.id || s.name === user.laboratory);
       if (managed.length === 0) {
         // Fallback to match by laboratory name
-        return user.laboratory ? applicationRepository.findByLaboratory(user.laboratory) : [];
+        result = user.laboratory ? applicationRepository.findByLaboratory(user.laboratory) : [];
+      } else {
+        const allApps = applicationRepository.findAll();
+        const managedLabNames = managed.map((m) => m.name.toLowerCase());
+        result = allApps.filter((a) => managedLabNames.some((lab) => a.laboratory.toLowerCase().includes(lab)));
       }
-      const allApps = applicationRepository.findAll();
-      const managedLabNames = managed.map((m) => m.name.toLowerCase());
-      return allApps.filter((a) => managedLabNames.some((lab) => a.laboratory.toLowerCase().includes(lab)));
     }
 
     // 5. CED_ADMIN and SYSTEM_ADMIN: all applications
-    return applicationRepository.findAll();
+    else {
+      result = applicationRepository.findAll();
+    }
+
+    return result.map(populateApplicationWithDocuments);
   },
 
   getApplicationById(user: SafeUser, id: string): ApplicationEntity {
@@ -78,7 +144,7 @@ export const applicationService = {
       }
     }
 
-    return app;
+    return populateApplicationWithDocuments(app);
   },
 
   submitApplication(
@@ -90,6 +156,8 @@ export const applicationService = {
       profileDetails?: {
         firstName?: string;
         lastName?: string;
+        prenom?: string;
+        nom?: string;
         phone?: string;
         cin?: string;
         etablissementOrigine?: string;
@@ -163,11 +231,11 @@ export const applicationService = {
     );
     const supervisorUser = supervisorEntity
       ? users.find((u) => u.id === supervisorEntity.userId)
-      : users.find((u) => u.id === topic.supervisorId || (u.firstName && topic.supervisorName?.includes(u.firstName)));
+      : users.find((u) => u.id === topic.supervisorId || (u.firstName && (topic as any).supervisorName?.includes(u.firstName)));
 
     const supervisorName = supervisorUser
       ? `Pr. ${supervisorUser.firstName} ${supervisorUser.lastName}`
-      : (topic.supervisorName || 'Pr. Karim Bennani');
+      : ((topic as any).supervisorName || 'Pr. Karim Bennani');
 
     const supervisorId = topic.supervisorId || (supervisorEntity ? supervisorEntity.id : 'sup-karim');
 
@@ -192,7 +260,7 @@ export const applicationService = {
       topicId: topic.id,
       topicTitle: topic.title,
       establishment: topic.establishment,
-      laboratory: topic.laboratory || (supervisorUser?.laboratory) || 'LISAC',
+      laboratory: (topic as any).laboratory || (supervisorUser?.laboratory) || 'LISAC',
       supervisorId,
       supervisorName,
       step: APPLICATION_STEPS.CANDIDATURE_SOUMISE,
@@ -232,7 +300,7 @@ export const applicationService = {
       );
     }
 
-    return newApp;
+    return populateApplicationWithDocuments(newApp);
   },
 
   deleteApplication(user: SafeUser, appId: string): boolean {
@@ -316,7 +384,7 @@ export const applicationService = {
       }
     }
 
-    return updated;
+    return populateApplicationWithDocuments(updated);
   },
 
   validateApplicationStructure(
@@ -398,6 +466,6 @@ export const applicationService = {
       );
     }
 
-    return updated;
+    return populateApplicationWithDocuments(updated);
   },
 };

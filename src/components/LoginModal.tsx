@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, LogIn, Mail, Lock, ShieldCheck, Info, KeyRound, CheckCircle2, User } from 'lucide-react';
+import { X, LogIn, Mail, Lock, ShieldCheck, Info, KeyRound, CheckCircle2, User, Eye, EyeOff } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LoginModalProps {
@@ -15,8 +15,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
   const [mode, setMode] = useState<'login' | 'forgot_password'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -79,11 +81,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
     }
   };
 
-  const handleSelectEmail = (fEmail: string) => {
+  const handleSelectEmail = (fEmail: string, roleName: string) => {
     setEmail(fEmail);
-    setPassword('');
+    setPassword(''); // Strictly cleared - Enforce manual entry
     setError(null);
     setSuccessMsg(null);
+    setInfoNotice(
+      `Email ${roleName} sélectionné (${fEmail}). Veuillez saisir manuellement votre mot de passe pour des raisons de sécurité.`
+    );
   };
 
   return (
@@ -122,15 +127,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
           </div>
 
           {error && (
-            <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl font-medium">
+            <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl font-medium leading-relaxed">
               {error}
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl font-medium flex items-center gap-1.5">
+            <div className="p-3 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl font-medium flex items-center gap-1.5 leading-relaxed">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
+            </div>
+          )}
+
+          {infoNotice && (
+            <div className="p-3 text-[11px] text-neutral-700 bg-neutral-50 border border-neutral-200 rounded-xl flex items-center gap-2 leading-relaxed">
+              <Info className="w-4 h-4 text-neutral-600 shrink-0" />
+              <span>{infoNotice}</span>
             </div>
           )}
 
@@ -175,14 +187,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
                 <div className="relative">
                   <Lock className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Saisissez votre mot de passe"
-                    className="w-full pl-10 pr-3.5 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400"
+                    autoComplete="current-password"
+                    className="w-full pl-10 pr-10 py-2.5 text-xs bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900 placeholder:text-neutral-400"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
+                <p className="text-[10px] text-neutral-500">
+                  🔒 Saisie manuelle sécurisée obligatoire (aucun mot de passe n'est stocké en clair).
+                </p>
               </div>
 
               {/* Submit button */}
@@ -246,14 +270,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               </span>
             </div>
             <p className="text-[11px] text-neutral-500">
-              Cliquez sur un profil pour pré-remplir votre email, puis saisissez manuellement votre mot de passe :
+              Cliquez pour sélectionner un profil. Mot de passe académique : <strong className="text-neutral-800 font-mono">usmba2026</strong> (saisie manuelle et masquée obligatoire) :
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               {/* 1. CANDIDATE */}
               <button
                 type="button"
-                onClick={() => handleSelectEmail('youssef.elamrani@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('youssef.elamrani@usmba.ac.ma', 'Candidat')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Candidat Youssef El Amrani"
               >
@@ -265,7 +289,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 2. SUPERVISOR */}
               <button
                 type="button"
-                onClick={() => handleSelectEmail('karim.bennani@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('karim.bennani@usmba.ac.ma', 'Directeur de Thèse')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Directeur Pr. Karim Bennani"
               >
@@ -277,7 +301,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 3. ADMINISTRATION CED */}
               <button
                 type="button"
-                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma')}
+                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma', 'Administration CED')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Administration CED USMBA"
               >

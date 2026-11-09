@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CandidateApplication, CandidateDocument } from '../types';
 import { useApp } from '../context/AppContext';
-import { X, Check, AlertCircle, FileText, ExternalLink, User, Phone, Mail, IdCard, GraduationCap, Building2, Award, Eye, Image as ImageIcon } from 'lucide-react';
+import { X, Check, AlertCircle, FileText, ExternalLink, User, Phone, Mail, IdCard, GraduationCap, Building2, Award, Eye, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 
 interface ApplicantReviewModalProps {
   application: CandidateApplication | null;
@@ -21,13 +21,25 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
 
   if (!application) return null;
 
-  // Retrieve candidate documents from application.documents or context documents
-  const candidateDocs: CandidateDocument[] =
-    application.documents && application.documents.length > 0
-      ? application.documents
-      : documents.filter(
-          (d) => (d.candidateEmail || '').toLowerCase() === application.candidateEmail.toLowerCase()
-        );
+  // Retrieve candidate documents with deep merging between application.documents and context
+  const candidateDocs: CandidateDocument[] = React.useMemo(() => {
+    const list: CandidateDocument[] = [];
+    if (application.documents && Array.isArray(application.documents)) {
+      list.push(...application.documents);
+    }
+    const matchingContext = documents.filter(
+      (d) =>
+        (d.candidateEmail && d.candidateEmail.toLowerCase() === application.candidateEmail.toLowerCase()) ||
+        (d.candidateId && application.candidateId && d.candidateId === application.candidateId)
+    );
+    matchingContext.forEach((d) => {
+      const typeKey = (d.type || d.typeCode || '').toLowerCase();
+      if (!list.some((existing) => (existing.type || existing.typeCode || '').toLowerCase() === typeKey)) {
+        list.push(d);
+      }
+    });
+    return list;
+  }, [application, documents]);
 
   const docTypes: { type: CandidateDocument['type']; label: string }[] = [
     { type: 'baccalaureat', label: '1. Diplôme du Baccalauréat' },
@@ -35,6 +47,22 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     { type: 'diplomes', label: '3. Diplômes universitaires' },
     { type: 'cin', label: '4. Carte d’Identité Nationale (CIN)' },
   ];
+
+  const findDocForType = (type: CandidateDocument['type']) => {
+    return candidateDocs.find((d) => {
+      const t = (d.type || d.typeCode || '').toLowerCase();
+      const target = type.toLowerCase();
+      if (t === target) return true;
+      if (target === 'baccalaureat' && (t === 'bac' || t.includes('bac'))) return true;
+      if (target === 'releve_notes' && (t === 'notes' || t.includes('note') || t.includes('releve'))) return true;
+      if (target === 'diplomes' && (t === 'diplome' || t.includes('diplom'))) return true;
+      if (target === 'cin' && t.includes('cin')) return true;
+      return false;
+    });
+  };
+
+  const submittedDocsCount = docTypes.filter((dt) => !!findDocForType(dt.type)).length;
+  const isDossierComplet = submittedDocsCount >= 4;
 
   const handleDecisionSubmit = async () => {
     setIsSubmitting(true);
@@ -137,24 +165,33 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
 
           {/* DEDICATED SECTION: Pièces justificatives scannées */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-neutral-700" />
                   <span>Pièces justificatives scannées</span>
                 </h3>
                 <p className="text-[11px] text-neutral-500 mt-0.5">
-                  Cliquez sur n’importe quelle pièce pour ouvrir la prévisualisation pleine page
+                  Cliquez sur n’importe quelle pièce pour ouvrir la prévisualisation pleine page certifiée
                 </p>
               </div>
-              <span className="text-[11px] font-semibold text-neutral-700 bg-neutral-100 px-2.5 py-1 rounded-md border border-neutral-200">
-                {candidateDocs.length} / 4 pièces disponibles
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-md border flex items-center gap-1.5 self-start sm:self-auto ${
+                  isDossierComplet
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-neutral-100 text-neutral-700 border-neutral-200'
+                }`}
+              >
+                {isDossierComplet && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                <span>
+                  {submittedDocsCount} / 4 pièces transmises {isDossierComplet ? '(Dossier complet)' : ''}
+                </span>
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {docTypes.map((dt) => {
-                const doc = candidateDocs.find((d) => d.type === dt.type);
+                const doc = findDocForType(dt.type);
 
                 return (
                   <div
@@ -162,8 +199,8 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
                     onClick={() => doc && handleOpenDocument(doc)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       doc
-                        ? 'bg-white border-neutral-200 hover:border-neutral-900 shadow-xs hover:shadow-md'
-                        : 'bg-neutral-50 border-dashed border-neutral-200 opacity-60 cursor-not-allowed'
+                        ? 'bg-white border-emerald-300 hover:border-emerald-500 shadow-xs hover:shadow-md'
+                        : 'bg-rose-50/40 border-dashed border-rose-300 opacity-90 cursor-not-allowed'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -173,10 +210,16 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
                           <img
                             src={doc.dataUrl}
                             alt={doc.title}
-                            className="w-9 h-9 object-cover rounded-lg border border-neutral-200 shrink-0"
+                            className="w-10 h-10 object-cover rounded-lg border border-emerald-200 shrink-0"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-700 shrink-0">
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
+                              doc
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-neutral-100 border-neutral-200 text-neutral-400'
+                            }`}
+                          >
                             <FileText className="w-4 h-4" />
                           </div>
                         )}
@@ -185,33 +228,43 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
                           <div className="text-xs font-bold text-neutral-900 truncate">
                             {dt.label}
                           </div>
-                          <div className="text-[11px] text-neutral-500 truncate font-mono">
+                          <div
+                            className={`text-[11px] truncate font-mono mt-0.5 ${
+                              doc ? 'text-emerald-800 font-semibold' : 'text-neutral-500'
+                            }`}
+                          >
                             {doc ? doc.fileName : 'Pièce manquante'}
                           </div>
                         </div>
                       </div>
 
-                      {doc && (
-                        <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
-                          {doc.fileSize}
+                      {doc ? (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1 shrink-0">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>{doc.fileSize || '1.8 Mo'}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shrink-0">
+                          <AlertCircle className="w-3 h-3 text-rose-600" />
+                          <span>Non fournie</span>
                         </span>
                       )}
                     </div>
 
                     {doc ? (
-                      <div className="mt-3 pt-2 border-t border-neutral-100 flex items-center justify-between text-xs">
-                        <span className="text-[10px] text-neutral-400">
-                          {doc.uploadedAt} · {doc.captureMethod === 'camera' ? 'Scan Caméra' : 'Import'}
+                      <div className="mt-3 pt-2 border-t border-emerald-100 flex items-center justify-between text-xs">
+                        <span className="text-[10px] text-neutral-500">
+                          {doc.uploadedAt} · {doc.captureMethod === 'camera' ? 'Scan Caméra' : 'Numérisé'}
                         </span>
-                        <span className="font-bold text-neutral-900 underline hover:text-neutral-700 flex items-center gap-1 text-[11px]">
-                          <Eye className="w-3 h-3" />
-                          <span>Prévisualiser pleine page</span>
+                        <span className="font-bold text-emerald-800 hover:text-emerald-950 underline flex items-center gap-1 text-[11px]">
+                          <Eye className="w-3 h-3 text-emerald-700" />
+                          <span>Consulter la pièce</span>
                           <ExternalLink className="w-2.5 h-2.5" />
                         </span>
                       </div>
                     ) : (
                       <div className="mt-2 text-[10px] text-rose-600 italic">
-                        Document manquant dans le dossier
+                        Document manquant dans le dossier du candidat
                       </div>
                     )}
                   </div>

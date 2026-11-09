@@ -8,8 +8,9 @@ import { notificationService } from './notificationService';
 export const documentService = {
   getCandidateDocuments(candidateUserId: string): ApplicationDocumentEntity[] {
     const candidates = db.get('candidates');
-    let cand = candidates.find((c) => c.userId === candidateUserId);
-    const user = db.get('users').find((u) => u.id === candidateUserId);
+    let cand = candidates.find((c) => c.userId === candidateUserId || c.id === candidateUserId);
+    const users = db.get('users');
+    const user = users.find((u) => u.id === candidateUserId || (cand && u.id === cand.userId));
 
     if (!cand && user) {
       cand = {
@@ -24,10 +25,16 @@ export const documentService = {
       db.save();
     }
 
-    if (!cand) return [];
+    const allDocs = db.get('documents');
+    const matched = allDocs.filter((d) => {
+      if (cand && d.candidateId === cand.id) return true;
+      if (cand && d.candidateId === cand.userId) return true;
+      if (d.candidateId === candidateUserId) return true;
+      if (user && d.candidateEmail && d.candidateEmail.toLowerCase() === user.email.toLowerCase()) return true;
+      return false;
+    });
 
-    const docs = documentRepository.findByCandidate(cand.id);
-    return docs.map((d) => ({
+    return matched.map((d) => ({
       ...d,
       candidateEmail: user?.email || d.candidateEmail,
     }));

@@ -5,6 +5,7 @@ import { CandidateView } from './components/CandidateView';
 import { SupervisorView } from './components/SupervisorView';
 import { StructureDirectorView } from './components/StructureDirectorView';
 import { CandidateRegisterPage } from './components/CandidateRegisterPage';
+import { LoginPage } from './components/LoginPage';
 import { LoginModal } from './components/LoginModal';
 import { AddTopicModal } from './components/AddTopicModal';
 import { ApplyModal } from './components/ApplyModal';
@@ -72,9 +73,52 @@ const MainLayout: React.FC = () => {
       <main className="flex-1 bg-white">
         {/* Dedicated Candidate Registration Page */}
         {currentView === 'register_candidat' ? (
-          <CandidateRegisterPage onBackToLogin={() => setIsLoginOpen(true)} />
+          <CandidateRegisterPage onBackToLogin={() => setCurrentView('dashboard')} />
+        ) : !currentUser ? (
+          /* When unauthenticated, show public catalogue only if explicitly requested, otherwise show LoginPage */
+          currentView === 'catalogue' ? (
+            <div className="space-y-6">
+              <div className="bg-neutral-50 border-b border-neutral-100 py-6 sm:py-8 px-4 text-center">
+                <div className="max-w-2xl mx-auto space-y-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                    Université Sidi Mohamed Ben Abdellah · Fès
+                  </span>
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
+                    Portail de Gestion du Cycle Doctoral (GCD USMBA)
+                  </h1>
+                  <p className="text-xs text-neutral-600 leading-relaxed max-w-xl mx-auto">
+                    Consultez les sujets de recherche doctorale ou connectez-vous avec vos identifiants institutionnels pour postuler, déposer vos 4 pièces scannées ou évaluer les candidatures.
+                  </p>
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full max-w-md mx-auto">
+                    <button
+                      onClick={() => setCurrentView('dashboard')}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
+                    >
+                      Connexion compte académique
+                    </button>
+                    <button
+                      onClick={() => setCurrentView('register_candidat')}
+                      className="w-full sm:w-auto px-5 py-2.5 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
+                    >
+                      Inscription candidat (@usmba.ac.ma)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <CandidateView
+                onOpenApply={handleApplyClick}
+                onOpenReReg={handleReRegClick}
+              />
+            </div>
+          ) : (
+            <LoginPage
+              onOpenRegister={() => setCurrentView('register_candidat')}
+              onOpenCatalogue={() => setCurrentView('catalogue')}
+            />
+          )
         ) : (
-          /* Role-based workspace or Public Catalogue (Strict Route Isolation) */
+          /* Role-based workspace when authenticated (Strict Route Isolation) */
           <>
             {/* 1. Candidate / Doctoral student Workspace */}
             {isCandidateRole && (
@@ -92,44 +136,6 @@ const MainLayout: React.FC = () => {
             {/* 3. Structure Director / CED Admin / System Admin Workspace */}
             {isAdministrationRole && (
               <StructureDirectorView />
-            )}
-
-            {/* 4. Public Catalogue when unauthenticated */}
-            {!currentUser && (
-              <div className="space-y-6">
-                <div className="bg-neutral-50 border-b border-neutral-100 py-6 sm:py-8 px-4 text-center">
-                  <div className="max-w-2xl mx-auto space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                      Université Sidi Mohamed Ben Abdellah · Fès
-                    </span>
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-                      Portail de Gestion du Cycle Doctoral (GCD USMBA)
-                    </h1>
-                    <p className="text-xs text-neutral-600 leading-relaxed max-w-xl mx-auto">
-                      Consultez les sujets de recherche doctorale ou connectez-vous avec vos identifiants institutionnels pour postuler, déposer vos 4 pièces scannées ou évaluer les candidatures.
-                    </p>
-                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full max-w-md mx-auto">
-                      <button
-                        onClick={() => setIsLoginOpen(true)}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs"
-                      >
-                        Connexion compte académique
-                      </button>
-                      <button
-                        onClick={() => setCurrentView('register_candidat')}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-white border border-neutral-200 text-neutral-900 rounded-xl text-xs font-semibold hover:bg-neutral-50 transition-colors"
-                      >
-                        Inscription candidat (@usmba.ac.ma)
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <CandidateView
-                  onOpenApply={handleApplyClick}
-                  onOpenReReg={handleReRegClick}
-                />
-              </div>
             )}
           </>
         )}

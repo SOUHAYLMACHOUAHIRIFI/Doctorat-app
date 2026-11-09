@@ -44,6 +44,15 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
 
   const myTopicIds = new Set(myTopics.map((t) => t.id));
 
+  const getCandidateDocsForApp = (app: CandidateApplication) => {
+    if (app.documents && app.documents.length > 0) {
+      return app.documents;
+    }
+    return documents.filter(
+      (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
+    );
+  };
+
   const myApplications = applications.filter((a) => {
     // 1. Matched by topic owned by this supervisor
     if (myTopicIds.has(a.topicId)) return true;
@@ -399,9 +408,8 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
               {/* Mobile Card View (block sm:hidden) */}
               <div className="block sm:hidden space-y-3">
                 {myApplications.map((app) => {
-                  const candidateDocs = documents.filter(
-                    (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
-                  );
+                  const candidateDocs = getCandidateDocsForApp(app);
+                  const isDocsComplete = candidateDocs.length >= 4;
 
                   return (
                     <div
@@ -433,9 +441,13 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
 
                       {/* Documents counter and pedagogical feedback */}
                       <div className="flex items-center justify-between text-xs text-neutral-600">
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3.5 h-3.5 text-neutral-500" />
-                          <span>{candidateDocs.length} / 4 pièces numérisées</span>
+                        <span className={`flex items-center gap-1 font-semibold ${isDocsComplete ? 'text-emerald-700' : 'text-neutral-700'}`}>
+                          {isDocsComplete ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-neutral-500" />
+                          )}
+                          <span>{candidateDocs.length} / 4 pièces {isDocsComplete ? 'complètes (conforme)' : 'numérisées'}</span>
                         </span>
                         <span className="text-[11px] text-neutral-400">
                           {app.submittedDate}
@@ -475,9 +487,8 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {myApplications.map((app) => {
-                      const candidateDocs = documents.filter(
-                        (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
-                      );
+                      const candidateDocs = getCandidateDocsForApp(app);
+                      const isDocsComplete = candidateDocs.length >= 4;
 
                       return (
                         <tr key={app.id} className="hover:bg-neutral-50/60 transition-colors">
@@ -500,8 +511,19 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
 
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-neutral-900 bg-neutral-100 px-2 py-0.5 rounded-md text-[11px]">
-                                {candidateDocs.length} / 4 pièces
+                              <span
+                                className={`font-bold px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1.5 border ${
+                                  isDocsComplete
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-neutral-100 text-neutral-800 border-neutral-200'
+                                }`}
+                              >
+                                {isDocsComplete ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <FileText className="w-3.5 h-3.5 text-neutral-500" />
+                                )}
+                                <span>{candidateDocs.length} / 4 pièces {isDocsComplete ? 'complètes' : ''}</span>
                               </span>
                               {candidateDocs.some((d) => d.captureMethod === 'camera') && (
                                 <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-50 px-1.5 py-0.5 rounded-md border border-neutral-200">

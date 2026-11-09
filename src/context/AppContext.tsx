@@ -556,7 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setApplications([]);
       setReRegistrations([]);
       setNotifications([]);
-      setCurrentView('catalogue');
+      setCurrentView('dashboard');
       showToast('Vous avez été déconnecté avec succès.');
     }
   };

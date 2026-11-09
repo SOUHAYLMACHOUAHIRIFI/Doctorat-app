@@ -142,16 +142,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handleNavClick('dashboard')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
                   currentView === 'dashboard'
-                    ? 'bg-neutral-100 text-neutral-900'
+                    ? 'bg-neutral-900 text-white'
                     : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
               >
-                Catalogue des Sujets
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Connexion</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('catalogue')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-colors ${
+                  currentView === 'catalogue'
+                    ? 'bg-neutral-900 text-white'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Catalogue des Sujets</span>
               </button>
 
               <button
@@ -369,30 +382,52 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
 
           {/* Mobile Nav Links */}
           <div className="space-y-1.5">
-            <button
-              onClick={() => handleNavClick('dashboard')}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
-                currentView === 'dashboard'
-                  ? 'bg-neutral-900 text-white'
-                  : 'text-neutral-800 hover:bg-neutral-100'
-              }`}
-            >
-              {currentUser ? roleInfo.icon : <BookOpen className="w-4 h-4" />}
-              <span>{currentUser ? roleInfo.label : 'Catalogue des Sujets de Thèse'}</span>
-            </button>
-
-            {!currentUser && (
+            {currentUser ? (
               <button
-                onClick={() => handleNavClick('register_candidat')}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
-                  currentView === 'register_candidat'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-800 hover:bg-neutral-100'
-                }`}
+                onClick={() => handleNavClick('dashboard')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left bg-neutral-900 text-white"
               >
-                <UserPlus className="w-4 h-4 text-neutral-500" />
-                <span>Page d'Inscription Candidat</span>
+                {roleInfo.icon}
+                <span>{roleInfo.label}</span>
               </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleNavClick('dashboard')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
+                    currentView === 'dashboard'
+                      ? 'bg-neutral-900 text-white'
+                      : 'text-neutral-800 hover:bg-neutral-100'
+                  }`}
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Portail de Connexion</span>
+                </button>
+
+                <button
+                  onClick={() => handleNavClick('catalogue')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
+                    currentView === 'catalogue'
+                      ? 'bg-neutral-900 text-white'
+                      : 'text-neutral-800 hover:bg-neutral-100'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Catalogue des Sujets de Thèse</span>
+                </button>
+
+                <button
+                  onClick={() => handleNavClick('register_candidat')}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs font-semibold rounded-xl text-left transition-colors ${
+                    currentView === 'register_candidat'
+                      ? 'bg-neutral-900 text-white'
+                      : 'text-neutral-800 hover:bg-neutral-100'
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4 text-neutral-500" />
+                  <span>Inscription Candidat</span>
+                </button>
+              </>
             )}
           </div>
 

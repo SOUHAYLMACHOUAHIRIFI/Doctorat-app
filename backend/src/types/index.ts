@@ -149,6 +149,7 @@ export interface ApplicationEntity {
   commissionNotes?: string;
   submittedAt: string;
   updatedAt: string;
+  documents?: ApplicationDocumentEntity[];
 }
 
 export interface AcademicYearEntity {

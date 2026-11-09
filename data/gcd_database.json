@@ -64,7 +64,7 @@
       "isEmailVerified": true,
       "createdAt": "2025-01-01",
       "updatedAt": "2026-11-09",
-      "lastLoginAt": "2026-11-09T16:33:27.748Z"
+      "lastLoginAt": "2026-11-09T17:05:49.579Z"
     },
     {
       "id": "usr-prof-fatima",
@@ -402,7 +402,7 @@
       "laboratoryId": "struct-lisac",
       "supervisorId": "sup-karim",
       "slotsTotal": 1,
-      "slotsTaken": 0,
+      "slotsTaken": 1,
       "status": "VALIDE",
       "structureFeedback": "Sujet innovant validé par le conseil de structure et la commission CED.",
       "academicYearId": "ay-2026-2027",
@@ -468,23 +468,94 @@
       "updatedAt": "2026-10-02"
     }
   ],
-  "applications": [],
+  "applications": [
+    {
+      "id": "app-youssef-th01",
+      "candidateId": "cand-youssef",
+      "candidateName": "Youssef El Amrani",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "candidateCin": "CD654321",
+      "candidatePhone": "+212 6 61 23 45 67",
+      "etablissementOrigine": "FST Fès",
+      "diplomeOrigine": "Master Recherche en Informatique & IA",
+      "topicId": "th-01",
+      "topicTitle": "Optimisation des modèles d’apprentissage profond pour l’imagerie médicale embarquée",
+      "establishment": "FST Fès",
+      "laboratory": "Laboratoire LISAC",
+      "supervisorId": "sup-karim",
+      "supervisorName": "Pr. Karim Bennani",
+      "step": 2,
+      "status": "SOUMIS",
+      "notes": "Dossier de candidature complet avec 4 pièces justificatives certifiées conformes.",
+      "motivationLetter": "Diplômé de la FST de Fès avec mention Bien en Master IA, je souhaite consacrer mes recherches à l’optimisation d’architectures profondes pour les équipements d’imagerie médicale sous la direction du Pr. Karim Bennani.",
+      "submittedAt": "2026-10-10",
+      "updatedAt": "2026-10-10"
+    }
+  ],
   "documents": [
     {
-      "id": "doc-mw56uszs",
+      "id": "doc-bac-youssef",
       "candidateId": "cand-youssef",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "applicationId": "app-youssef-th01",
       "typeCode": "baccalaureat",
-      "title": "Diplôme du Baccalauréat",
-      "fileName": "bac_test.pdf",
-      "fileSize": "1.2 Mo",
+      "title": "Diplôme du Baccalauréat National",
+      "fileName": "baccalaureat_scientifique.pdf",
+      "fileSize": "1.4 Mo",
       "fileMimeType": "application/pdf",
-      "dataUrl": "data:application/pdf;base64,JVBERi0xLjc...",
-      "status": "REJETE",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtQkFDQ0FMQVVSRUFUCg==",
+      "status": "VALIDE",
       "captureMethod": "upload",
-      "uploadedAt": "2026-11-06",
-      "updatedAt": "2026-11-06",
-      "rejectionReason": "Scan illisible, veuillez fournir une copie couleur haute résolution.",
-      "candidateEmail": "youssef.elamrani@usmba.ac.ma"
+      "uploadedAt": "2026-10-02",
+      "updatedAt": "2026-10-02"
+    },
+    {
+      "id": "doc-notes-youssef",
+      "candidateId": "cand-youssef",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "applicationId": "app-youssef-th01",
+      "typeCode": "releve_notes",
+      "title": "Relevés de Notes Licence & Master",
+      "fileName": "releves_notes_licence_master.pdf",
+      "fileSize": "2.1 Mo",
+      "fileMimeType": "application/pdf",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtTk9URVNfTElDRU5DRV9NQVNURVIK",
+      "status": "VALIDE",
+      "captureMethod": "upload",
+      "uploadedAt": "2026-10-02",
+      "updatedAt": "2026-10-02"
+    },
+    {
+      "id": "doc-dip-youssef",
+      "candidateId": "cand-youssef",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "applicationId": "app-youssef-th01",
+      "typeCode": "diplomes",
+      "title": "Diplôme de Master de Recherche en Informatique & IA",
+      "fileName": "diplome_master_recherche_ia.pdf",
+      "fileSize": "1.8 Mo",
+      "fileMimeType": "application/pdf",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtRElQTE9NRV9NQVNURVIK",
+      "status": "VALIDE",
+      "captureMethod": "upload",
+      "uploadedAt": "2026-10-02",
+      "updatedAt": "2026-10-02"
+    },
+    {
+      "id": "doc-cin-youssef",
+      "candidateId": "cand-youssef",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "applicationId": "app-youssef-th01",
+      "typeCode": "cin",
+      "title": "Carte d’Identité Nationale (CIN)",
+      "fileName": "cin_recto_verso_CD654321.pdf",
+      "fileSize": "950 Ko",
+      "fileMimeType": "application/pdf",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtQ0lOX0NENjU0MzIxCg==",
+      "status": "VALIDE",
+      "captureMethod": "upload",
+      "uploadedAt": "2026-10-02",
+      "updatedAt": "2026-10-02"
     }
   ],
   "documentReviews": [
@@ -834,6 +905,34 @@
     }
   ],
   "auditLogs": [
+    {
+      "userId": "usr-prof-karim",
+      "userEmail": "karim.bennani@usmba.ac.ma",
+      "userRole": "SUPERVISOR",
+      "action": "LOGIN_SUCCESS",
+      "entityType": "User",
+      "entityId": "usr-prof-karim",
+      "details": {
+        "role": "SUPERVISOR"
+      },
+      "ipAddress": "127.0.0.1",
+      "id": "audit-mw9iiryn-lu5o",
+      "createdAt": "2026-11-09T17:05:49.583Z"
+    },
+    {
+      "userId": "usr-prof-karim",
+      "userEmail": "karim.bennani@usmba.ac.ma",
+      "userRole": "SUPERVISOR",
+      "action": "LOGIN_FAILED",
+      "entityType": "User",
+      "entityId": "usr-prof-karim",
+      "details": {
+        "reason": "Invalid password"
+      },
+      "ipAddress": "127.0.0.1",
+      "id": "audit-mw9iiepj-5x5c",
+      "createdAt": "2026-11-09T17:05:32.407Z"
+    },
     {
       "userId": "usr-cand-youssef",
       "userEmail": "youssef.elamrani@usmba.ac.ma",

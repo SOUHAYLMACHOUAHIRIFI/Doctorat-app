@@ -43,6 +43,9 @@ export interface ThesisTopic {
   supervisorEmail?: string;
   keywords: string[];
   summary: string;
+  researchAxis?: string;
+  prerequisites?: string;
+  methodology?: string;
   status: TopicStatus;
   structureValidationStatus?: StructureValidationStatus;
   structureFeedback?: string;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ThesisTopic, DocumentType, ApplicationStep, User } from '../types';
+import { ThesisTopic, DocumentType, ApplicationStep, User, CandidateDocument } from '../types';
 import {
   Search,
   ArrowRight,
@@ -8,7 +8,6 @@ import {
   Check,
   FileText,
   Upload,
-  Camera,
   Trash2,
   RefreshCw,
   CreditCard,
@@ -106,15 +105,28 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     },
   ];
 
-  // User documents
+  // User documents reliably scoped
   const candidateDocs = useMemo(() => {
     if (!currentUser) return [];
     return documents.filter(
-      (d) => (d.candidateEmail || '').toLowerCase() === currentUser.email.toLowerCase()
+      (d) =>
+        !d.candidateEmail ||
+        d.candidateEmail.toLowerCase() === currentUser.email.toLowerCase() ||
+        d.candidateId === currentUser.id
     );
   }, [documents, currentUser]);
 
-  const candidateDocsCount = candidateDocs.length;
+  const candidateDocsMap = useMemo(() => {
+    const map: Partial<Record<DocumentType, CandidateDocument>> = {};
+    candidateDocs.forEach((d) => {
+      if (d.status !== 'A_CORRIGER' && (d.status as string) !== 'rejete') {
+        map[d.type] = d;
+      }
+    });
+    return map;
+  }, [candidateDocs]);
+
+  const candidateDocsCount = Object.keys(candidateDocsMap).length;
   const isDossierComplet = candidateDocsCount >= 4;
 
   // Sync profile fields if currentUser changes
@@ -210,17 +222,17 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     }
   };
 
-  const openScanner = (type: DocumentType, title: string) => {
+  const openUploadModal = (type: DocumentType, title: string) => {
     setScanningDocType(type);
     setScanningDocTitle(title);
   };
 
-  const handleSaveScannedDocument = async (
+  const handleSaveUploadedDocument = async (
     type: DocumentType,
     fileName: string,
     fileSize: string,
     dataUrl: string,
-    method: 'camera' | 'upload'
+    method: 'upload'
   ) => {
     await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
     setScanningDocType(null);
@@ -689,14 +701,18 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               <div>
                 <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-neutral-800" />
-                  <span>B. Scan des 4 Pièces Justificatives Obligatoires</span>
+                  <span>B. Dépôt des 4 Pièces Justificatives Obligatoires</span>
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Numérisez par webcam ou téléversez vos documents (PDF ou Image).
+                  Importez vos documents certifiés au format PDF ou Image (JPEG, PNG).
                 </p>
               </div>
-              <span className="text-xs font-bold text-neutral-700 bg-neutral-100 px-3 py-1 rounded-xl border border-neutral-200 self-start sm:self-auto">
-                {candidateDocsCount} / 4 scannées
+              <span className={`text-xs font-bold px-3 py-1 rounded-xl border self-start sm:self-auto ${
+                isDossierComplet
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-neutral-100 text-neutral-700 border-neutral-200'
+              }`}>
+                {candidateDocsCount} / 4 pièces enregistrées
               </span>
             </div>
 
@@ -738,7 +754,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         {uploadedDoc ? (
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
                             <Check className="w-3 h-3" />
-                            <span>Scanné & Validé</span>
+                            <span>Enregistré</span>
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
@@ -758,8 +774,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                                 onClick={() =>
                                   openAttachment({
                                     title: uploadedDoc.title,
-                                    subtitle: `Scan certifié — ${uploadedDoc.fileName}`,
-                                    content: `Document certifié conforme pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nNumérisé le : ${uploadedDoc.uploadedAt}`,
+                                    subtitle: `Document certifié — ${uploadedDoc.fileName}`,
+                                    content: `Document certifié conforme pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nDéposé le : ${uploadedDoc.uploadedAt}`,
                                     author: currentUser?.name || 'Candidat',
                                     date: uploadedDoc.uploadedAt,
                                     dataUrl: uploadedDoc.dataUrl,
@@ -770,7 +786,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                             ) : (
                               <div className="w-12 h-12 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
                                 <span>PDF</span>
-                                <span className="text-[8px] text-neutral-500 font-sans">SCAN</span>
+                                <span className="text-[8px] text-neutral-500 font-sans">FICHIER</span>
                               </div>
                             )}
 
@@ -785,17 +801,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                               </div>
 
                               <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1">
-                                {uploadedDoc.captureMethod === 'camera' ? (
-                                  <span className="flex items-center gap-1 text-neutral-600 font-medium">
-                                    <Camera className="w-3 h-3 text-neutral-500" />
-                                    <span>Numérisé par caméra</span>
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1 text-neutral-600 font-medium">
-                                    <Upload className="w-3 h-3 text-neutral-500" />
-                                    <span>Importé par fichier</span>
-                                  </span>
-                                )}
+                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
+                                  <Upload className="w-3 h-3 text-neutral-500" />
+                                  <span>Téléversé par fichier</span>
+                                </span>
                                 <span>·</span>
                                 <span>{uploadedDoc.uploadedAt}</span>
                               </div>
@@ -809,7 +818,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                                 openAttachment({
                                   title: uploadedDoc.title,
                                   subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
-                                  content: `Scan certifié conforme pour le candidat ${currentUser?.name} (CIN: ${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                  content: `Pièce certifiée conforme pour le candidat ${currentUser?.name} (CIN: ${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
                                   author: currentUser?.name || 'Candidat',
                                   date: uploadedDoc.uploadedAt,
                                   dataUrl: uploadedDoc.dataUrl,
@@ -818,7 +827,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                               className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
                             >
                               <Eye className="w-3 h-3" />
-                              <span>Voir le scan complet</span>
+                              <span>Voir le document</span>
                             </button>
 
                             <button
@@ -833,22 +842,22 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       )}
                     </div>
 
-                    {/* Trigger Scanner / Upload Modal */}
+                    {/* Trigger File Upload Modal */}
                     <div className="pt-3">
                       <button
                         type="button"
-                        onClick={() => openScanner(req.type, req.label)}
+                        onClick={() => openUploadModal(req.type, req.label)}
                         className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all shadow-xs ${
                           uploadedDoc
                             ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 border border-neutral-200'
                             : 'bg-neutral-900 text-white hover:bg-neutral-800'
                         }`}
                       >
-                        <Camera className="w-3.5 h-3.5" />
+                        <Upload className="w-3.5 h-3.5" />
                         <span>
                           {uploadedDoc
-                            ? 'Remplacer / Rescanner ce document'
-                            : 'Numériser / Importer ce document'}
+                            ? 'Remplacer ce document'
+                            : 'Importer ce document (PDF / Image)'}
                         </span>
                       </button>
                     </div>
@@ -1115,8 +1124,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       onClick={() => setActiveStep('documents')}
                       className="px-3.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors inline-flex items-center gap-1.5"
                     >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Remplacer / re-scanner mes documents à l'Étape 1</span>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Remplacer / importer à nouveau mes documents à l'Étape 1</span>
                     </button>
                   </div>
                 </div>
@@ -1505,7 +1514,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         docType={scanningDocType}
         docTitle={scanningDocTitle}
         onClose={() => setScanningDocType(null)}
-        onSave={handleSaveScannedDocument}
+        onSave={handleSaveUploadedDocument}
       />
     </div>
   );

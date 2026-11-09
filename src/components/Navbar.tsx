@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Role } from '../types';
 import {
@@ -11,14 +11,8 @@ import {
   Menu,
   X,
   BookOpen,
-  User,
   ChevronDown,
   Bell,
-  CheckCircle2,
-  AlertTriangle,
-  Info,
-  Clock,
-  ShieldAlert,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -43,20 +37,39 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
+  const profileRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-close dropdown menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setNotificationsOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(target)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, []);
+
+  // Strict 3 principal spaces
   const getRoleDetails = (r?: Role | null) => {
     switch (r) {
       case 'CANDIDATE':
       case 'candidat':
-        return {
-          label: 'Espace Candidat',
-          badge: 'Candidat au Doctorat',
-          icon: <GraduationCap className="w-4 h-4 text-neutral-800" />,
-        };
       case 'DOCTORANT':
         return {
-          label: 'Espace Doctorant',
-          badge: 'Doctorant Inscrit',
-          icon: <GraduationCap className="w-4 h-4 text-emerald-700" />,
+          label: 'Espace Candidat',
+          badge: 'Candidat / Doctorant',
+          icon: <GraduationCap className="w-4 h-4 text-neutral-800" />,
         };
       case 'SUPERVISOR':
       case 'directeur_these':
@@ -67,27 +80,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
         };
       case 'STRUCTURE_DIRECTOR':
       case 'directeur_structure':
-        return {
-          label: 'Direction de Structure',
-          badge: 'Directeur de Laboratoire',
-          icon: <Shield className="w-4 h-4 text-neutral-800" />,
-        };
       case 'CED_ADMIN':
-        return {
-          label: 'Administration CED',
-          badge: 'Responsable CED USMBA',
-          icon: <Shield className="w-4 h-4 text-neutral-900" />,
-        };
       case 'SYSTEM_ADMIN':
         return {
-          label: 'Administration Système',
-          badge: 'Administrateur Global',
-          icon: <ShieldAlert className="w-4 h-4 text-neutral-900" />,
+          label: 'Espace Administration CED',
+          badge: 'Administration CED / Structure',
+          icon: <Shield className="w-4 h-4 text-neutral-900" />,
         };
       default:
         return {
-          label: 'Catalogue Public',
-          badge: 'Visiteur',
+          label: 'Catalogue des Sujets',
+          badge: 'Portail Public',
           icon: <BookOpen className="w-4 h-4 text-neutral-800" />,
         };
     }
@@ -171,7 +174,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
           {currentUser ? (
             <div className="flex items-center gap-2">
               {/* Notification Bell */}
-              <div className="relative">
+              <div ref={notificationsRef} className="relative">
                 <button
                   type="button"
                   onClick={() => {
@@ -233,7 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
               </div>
 
               {/* User Profile dropdown */}
-              <div className="relative">
+              <div ref={profileRef} className="relative">
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(!profileDropdownOpen);

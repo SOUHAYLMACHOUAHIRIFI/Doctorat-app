@@ -8,10 +8,29 @@ import { notificationService } from './notificationService';
 export const documentService = {
   getCandidateDocuments(candidateUserId: string): ApplicationDocumentEntity[] {
     const candidates = db.get('candidates');
-    const cand = candidates.find((c) => c.userId === candidateUserId);
+    let cand = candidates.find((c) => c.userId === candidateUserId);
+    const user = db.get('users').find((u) => u.id === candidateUserId);
+
+    if (!cand && user) {
+      cand = {
+        id: `cand-${Date.now().toString(36)}`,
+        userId: user.id,
+        etablissementOrigine: user.establishment || 'FST Fès',
+        diplomeOrigine: 'Master de Recherche',
+        createdAt: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+      candidates.push(cand);
+      db.save();
+    }
+
     if (!cand) return [];
 
-    return documentRepository.findByCandidate(cand.id);
+    const docs = documentRepository.findByCandidate(cand.id);
+    return docs.map((d) => ({
+      ...d,
+      candidateEmail: user?.email || d.candidateEmail,
+    }));
   },
 
   isDossierComplet(candidateUserId: string): boolean {
@@ -32,7 +51,7 @@ export const documentService = {
       fileSize: string;
       fileMimeType: string;
       dataUrl: string;
-      captureMethod?: 'camera' | 'upload';
+      captureMethod?: string;
     }
   ): ApplicationDocumentEntity {
     const candidates = db.get('candidates');
@@ -63,14 +82,15 @@ export const documentService = {
     const newDoc: ApplicationDocumentEntity = {
       id: `doc-${Date.now().toString(36)}`,
       candidateId: cand.id,
+      candidateEmail: user.email,
       typeCode: data.typeCode,
       title: titles[data.typeCode] || 'Document Justificatif',
       fileName: data.fileName,
       fileSize: data.fileSize || '1.8 Mo',
       fileMimeType: data.fileMimeType || 'application/pdf',
       dataUrl: data.dataUrl,
-      status: DOCUMENT_STATUS.DEPOSE, // Initial deposit: real state DEPOSE (never falsely certified as automatically valid!)
-      captureMethod: data.captureMethod || 'upload',
+      status: DOCUMENT_STATUS.DEPOSE,
+      captureMethod: (data.captureMethod as any) || 'upload',
       uploadedAt: now,
       updatedAt: now,
     };

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Edit2, Check, X, FileText, UserCheck, Shield, ChevronRight, Eye, AlertCircle, Building2, User, Phone, Mail, Award, CheckCircle2 } from 'lucide-react';
-import { ThesisTopic, CandidateApplication, ApplicationStep, ApplicationStatus } from '../types';
+import { ThesisTopic, CandidateApplication, ApplicationStep, ApplicationStatus, ReRegistration } from '../types';
 import { EditTopicModal } from './EditTopicModal';
 import { ApplicantReviewModal } from './ApplicantReviewModal';
+import { AnnualReportModal } from './AnnualReportModal';
 
 interface SupervisorViewProps {
   onOpenAddTopic: () => void;
@@ -24,6 +25,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const [activeTab, setActiveTab] = useState<'sujets' | 'candidatures' | 'reinscriptions'>('sujets');
   const [editingTopic, setEditingTopic] = useState<ThesisTopic | null>(null);
   const [reviewingApplication, setReviewingApplication] = useState<CandidateApplication | null>(null);
+  const [viewingReport, setViewingReport] = useState<ReRegistration | null>(null);
 
   const myTopics = topics.filter(
     (t) =>
@@ -517,15 +519,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
 
                     <div className="flex flex-col gap-2 pt-1">
                       <button
-                        onClick={() =>
-                          openAttachment({
-                            title: re.activityReport.fileName,
-                            subtitle: `Rapport d'activité — ${re.candidateName}`,
-                            content: re.activityReport.summary,
-                            author: re.candidateName,
-                            date: re.submittedDate,
-                          })
-                        }
+                        onClick={() => setViewingReport(re)}
                         className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded-xl transition-colors"
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -583,15 +577,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
                         <td className="py-3.5 px-4">
                           <div className="text-[11px] text-neutral-600 space-y-1">
                             <button
-                              onClick={() =>
-                                openAttachment({
-                                  title: re.activityReport.fileName,
-                                  subtitle: `Rapport d'activité — ${re.candidateName}`,
-                                  content: re.activityReport.summary,
-                                  author: re.candidateName,
-                                  date: re.submittedDate,
-                                })
-                              }
+                              onClick={() => setViewingReport(re)}
                               className="text-neutral-900 underline font-semibold flex items-center gap-1 hover:text-neutral-700"
                             >
                               <FileText className="w-3 h-3 text-neutral-500" />
@@ -642,6 +628,13 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
       <ApplicantReviewModal
         application={reviewingApplication}
         onClose={() => setReviewingApplication(null)}
+      />
+
+      {/* Re-enrollment Detailed Annual Report Modal */}
+      <AnnualReportModal
+        reRegistration={viewingReport}
+        onClose={() => setViewingReport(null)}
+        onApprove={(id) => updateReRegistrationStatus(id, 'valide_encadrant')}
       />
     </div>
   );

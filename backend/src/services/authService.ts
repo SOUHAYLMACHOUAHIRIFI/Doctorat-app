@@ -16,6 +16,7 @@ export const authService = {
     phone: string;
     etablissementOrigine: string;
     diplomeOrigine: string;
+    registrationType?: 'NOUVEAU' | 'REINSCRIPTION';
     ipAddress?: string;
   }): Promise<{ user: SafeUser; token: string }> {
     const normalizedEmail = data.email.trim().toLowerCase();
@@ -42,6 +43,8 @@ export const authService = {
     const userId = `usr-cand-${Date.now().toString(36)}`;
     const now = new Date().toISOString().split('T')[0];
 
+    const role = data.registrationType === 'REINSCRIPTION' ? ROLES.DOCTORANT : ROLES.CANDIDATE;
+
     const newUser: UserEntity = {
       id: userId,
       email: normalizedEmail,
@@ -51,7 +54,7 @@ export const authService = {
       cin: normalizedCin,
       phone: data.phone.trim(),
       establishment: data.etablissementOrigine.trim(),
-      role: ROLES.CANDIDATE,
+      role,
       isActive: true,
       isEmailVerified: true, // Activated for institutional @usmba.ac.ma
       createdAt: now,
@@ -71,6 +74,21 @@ export const authService = {
     };
 
     db.get('candidates').push(candidateProfile);
+
+    // If Re-registration, create DoctoralStudentEntity record
+    if (data.registrationType === 'REINSCRIPTION') {
+      db.get('doctoralStudents').push({
+        id: `doc-${Date.now().toString(36)}`,
+        userId,
+        thesisTitle: 'Thèse de doctorat en cours — USMBA',
+        supervisorId: 'sup-karim',
+        structureId: 'struct-lisac',
+        enrollmentYear: 2,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
     db.save();
 
     const safeUser = userRepository.toSafeUser(newUser);

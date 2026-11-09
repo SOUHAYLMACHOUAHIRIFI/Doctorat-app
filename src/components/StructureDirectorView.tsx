@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ThesisTopic, CandidateApplication, AppAuditLog } from '../types';
 import { ApplicantReviewModal } from './ApplicantReviewModal';
+import { TopicDetailModal } from './TopicDetailModal';
 import { api } from '../services/api';
 
 export const StructureDirectorView: React.FC = () => {
@@ -44,6 +45,7 @@ export const StructureDirectorView: React.FC = () => {
   const [filterValidation, setFilterValidation] = useState<'all' | 'en_examen' | 'approuve'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [reviewingApp, setReviewingApp] = useState<CandidateApplication | null>(null);
+  const [viewingTopic, setViewingTopic] = useState<ThesisTopic | null>(null);
 
   // Reject / Approve Feedback Modal
   const [feedbackModalTopic, setFeedbackModalTopic] = useState<{ id: string; type: 'approve' | 'reject'; title: string } | null>(null);
@@ -358,6 +360,15 @@ export const StructureDirectorView: React.FC = () => {
 
                         <td className="py-3.5 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setViewingTopic(topic)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-neutral-800 bg-neutral-100 hover:bg-neutral-200 rounded-xl transition-colors border border-neutral-200"
+                              title="Visualiser le sujet de thèse"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-neutral-600" />
+                              <span>Visualiser le sujet</span>
+                            </button>
+
                             {isApproved ? (
                               <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl">
                                 <Check className="w-3.5 h-3.5" />
@@ -698,6 +709,14 @@ export const StructureDirectorView: React.FC = () => {
       <ApplicantReviewModal
         application={reviewingApp}
         onClose={() => setReviewingApp(null)}
+      />
+
+      {/* Topic Detailed Preview Modal */}
+      <TopicDetailModal
+        topic={viewingTopic}
+        onClose={() => setViewingTopic(null)}
+        onApprove={(t) => handleOpenFeedback(t, 'approve')}
+        onReject={(t) => handleOpenFeedback(t, 'reject')}
       />
     </div>
   );

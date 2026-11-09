@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ArrowLeft, UserPlus, CheckCircle2, ShieldCheck, Mail, User, Phone, CreditCard, Lock, GraduationCap, Building2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, Mail, User, Phone, CreditCard, Lock, GraduationCap, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
 
 interface CandidateRegisterPageProps {
@@ -10,6 +10,7 @@ interface CandidateRegisterPageProps {
 export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ onBackToLogin }) => {
   const { registerCandidate } = useApp();
 
+  const [registrationType, setRegistrationType] = useState<'NOUVEAU' | 'REINSCRIPTION'>('NOUVEAU');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nom, setNom] = useState('');
@@ -62,6 +63,7 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
         password: password.trim(),
         etablissementOrigine,
         diplomeOrigine: diplomeOrigine.trim(),
+        registrationType,
       });
 
       if (!result.success) {
@@ -95,13 +97,13 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
         <div className="space-y-2 border-b border-neutral-100 pb-5">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-neutral-100 rounded-md text-[11px] font-medium text-neutral-800">
             <ShieldCheck className="w-3.5 h-3.5 text-neutral-900" />
-            <span>Inscription Initiale Candidat</span>
+            <span>Portail Universitaire · Inscription & Renouvellement</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">
-            Créer un compte candidat au doctorat
+            Inscription au Cycle Doctoral
           </h1>
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Remplissez les informations obligatoires pour activer votre profil candidat auprès du Centre d’Études Doctorales (CED).
+            Sélectionnez votre situation académique puis renseignez vos coordonnées institutionnelles (@usmba.ac.ma).
           </p>
         </div>
 
@@ -114,6 +116,71 @@ export const CandidateRegisterPage: React.FC<CandidateRegisterPageProps> = ({ on
 
         {/* Form with required fields */}
         <form onSubmit={handleSubmit} className="space-y-5 bg-white border border-neutral-200 rounded-2xl p-5 sm:p-8 shadow-xs">
+          {/* Situation académique obligatoire (Boutons radio) */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-neutral-900 flex items-center justify-between">
+              <span>Statut de votre demande doctorale *</span>
+              <span className="text-[10px] text-neutral-500 font-normal">Choix obligatoire</span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: Nouveau Candidat */}
+              <label
+                onClick={() => setRegistrationType('NOUVEAU')}
+                className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  registrationType === 'NOUVEAU'
+                    ? 'border-neutral-900 bg-neutral-50 shadow-xs ring-1 ring-neutral-900'
+                    : 'border-neutral-200 bg-white hover:border-neutral-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="registrationType"
+                  value="NOUVEAU"
+                  checked={registrationType === 'NOUVEAU'}
+                  onChange={() => setRegistrationType('NOUVEAU')}
+                  className="mt-0.5 text-neutral-900 focus:ring-neutral-900"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-neutral-900">
+                    <GraduationCap className="w-4 h-4 text-neutral-800" />
+                    <span>Nouveau Candidat</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 mt-1 leading-snug">
+                    Première inscription en doctorat (dépôt des 4 pièces justificatives et postulation à un sujet).
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 2: Réinscription */}
+              <label
+                onClick={() => setRegistrationType('REINSCRIPTION')}
+                className={`relative flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  registrationType === 'REINSCRIPTION'
+                    ? 'border-neutral-900 bg-neutral-50 shadow-xs ring-1 ring-neutral-900'
+                    : 'border-neutral-200 bg-white hover:border-neutral-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="registrationType"
+                  value="REINSCRIPTION"
+                  checked={registrationType === 'REINSCRIPTION'}
+                  onChange={() => setRegistrationType('REINSCRIPTION')}
+                  className="mt-0.5 text-neutral-900 focus:ring-neutral-900"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-neutral-900">
+                    <RefreshCw className="w-3.5 h-3.5 text-neutral-800" />
+                    <span>Réinscription</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-500 mt-1 leading-snug">
+                    Étudiant déjà doctorant demandant le renouvellement annuel (2ème, 3ème année ou plus).
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
           {/* Email académique */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-neutral-800 flex items-center justify-between">

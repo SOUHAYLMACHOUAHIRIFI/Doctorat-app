@@ -1,19 +1,27 @@
 import { z } from 'zod';
 
+const validDocumentTypes = ['baccalaureat', 'releve_notes', 'diplomes', 'cin'] as const;
+
 export const uploadDocumentSchema = z.object({
-  typeCode: z.enum(['baccalaureat', 'releve_notes', 'diplomes', 'cin']),
-  fileName: z.string().min(3, 'Nom de fichier requis').trim(),
+  typeCode: z.string().transform((val) => {
+    const normalized = val.trim().toLowerCase();
+    const map: Record<string, 'baccalaureat' | 'releve_notes' | 'diplomes' | 'cin'> = {
+      bac: 'baccalaureat',
+      baccalaureat: 'baccalaureat',
+      notes: 'releve_notes',
+      releve_notes: 'releve_notes',
+      releves: 'releve_notes',
+      diplome: 'diplomes',
+      diplomes: 'diplomes',
+      cin: 'cin',
+    };
+    return map[normalized] || (normalized as any);
+  }).pipe(z.enum(validDocumentTypes)),
+  fileName: z.string().min(1, 'Nom de fichier requis').trim(),
   fileSize: z.string().default('1.8 Mo'),
-  fileMimeType: z.string().refine((val) => {
-    return (
-      val.startsWith('application/pdf') ||
-      val.startsWith('image/jpeg') ||
-      val.startsWith('image/png') ||
-      val.startsWith('image/webp')
-    );
-  }, 'Format de fichier non autorisé. Formats acceptés : PDF, JPG, PNG, WEBP'),
-  dataUrl: z.string().min(10, 'Données du document manquantes (Base64 requis)'),
-  captureMethod: z.enum(['camera', 'upload']).default('upload'),
+  fileMimeType: z.string().optional().default('application/pdf'),
+  dataUrl: z.string().min(5, 'Données du document manquantes'),
+  captureMethod: z.string().optional().default('upload'),
 });
 
 export const reviewDocumentSchema = z.object({

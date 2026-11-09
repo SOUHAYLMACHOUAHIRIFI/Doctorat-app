@@ -54,6 +54,7 @@ export const api = {
       phone: string;
       etablissementOrigine: string;
       diplomeOrigine: string;
+      registrationType?: 'NOUVEAU' | 'REINSCRIPTION';
     }) {
       const res = await request<{ success: boolean; user: any; token: string; message: string }>('/auth/register', {
         method: 'POST',

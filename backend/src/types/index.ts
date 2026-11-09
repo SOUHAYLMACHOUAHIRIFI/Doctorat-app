@@ -97,6 +97,7 @@ export interface ResearchTopicEntity {
 export interface ApplicationDocumentEntity {
   id: string;
   candidateId: string;
+  candidateEmail?: string;
   applicationId?: string;
   typeCode: string; // baccalaureat, releve_notes, diplomes, cin
   title: string;

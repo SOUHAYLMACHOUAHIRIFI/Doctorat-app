@@ -15,9 +15,7 @@ export const candidateRegisterSchema = z.object({
     }),
   password: z
     .string()
-    .min(8, 'Le mot de passe doit comporter au moins 8 caractères')
-    .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une lettre majuscule')
-    .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+    .min(6, 'Le mot de passe doit comporter au moins 6 caractères'),
   firstName: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères').trim(),
   lastName: z.string().min(2, 'Le nom doit contenir au moins 2 caractères').trim(),
   cin: z
@@ -29,6 +27,7 @@ export const candidateRegisterSchema = z.object({
   phone: z.string().min(8, 'Numéro de téléphone requis').trim(),
   etablissementOrigine: z.string().min(2, 'Établissement requis').trim(),
   diplomeOrigine: z.string().min(2, 'Diplôme d’origine requis').trim(),
+  registrationType: z.enum(['NOUVEAU', 'REINSCRIPTION']).optional().default('NOUVEAU'),
 });
 
 export const resetPasswordRequestSchema = z.object({

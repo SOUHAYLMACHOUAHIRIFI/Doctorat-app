@@ -172,7 +172,9 @@ const MainLayout: React.FC = () => {
       />
       <AddTopicModal isOpen={isAddTopicOpen} onClose={() => setIsAddTopicOpen(false)} />
       <ReRegistrationModal isOpen={isReRegOpen} onClose={() => setIsReRegOpen(false)} />
-      <ApplyModal topic={applyingTopic} onClose={() => setApplyingTopic(null)} />
+      {applyingTopic && (
+        <ApplyModal topic={applyingTopic} onClose={() => setApplyingTopic(null)} />
+      )}
       <AttachmentViewerModal />
     </div>
   );

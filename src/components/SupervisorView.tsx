@@ -701,20 +701,26 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
       )}
 
       {/* Edit Topic Modal */}
-      <EditTopicModal topic={editingTopic} onClose={() => setEditingTopic(null)} />
+      {editingTopic && (
+        <EditTopicModal topic={editingTopic} onClose={() => setEditingTopic(null)} />
+      )}
 
       {/* Applicant Detailed Review Modal */}
-      <ApplicantReviewModal
-        application={reviewingApplication}
-        onClose={() => setReviewingApplication(null)}
-      />
+      {reviewingApplication && (
+        <ApplicantReviewModal
+          application={reviewingApplication}
+          onClose={() => setReviewingApplication(null)}
+        />
+      )}
 
       {/* Re-enrollment Detailed Annual Report Modal */}
-      <AnnualReportModal
-        reRegistration={viewingReport}
-        onClose={() => setViewingReport(null)}
-        onApprove={(id) => updateReRegistrationStatus(id, 'valide_encadrant')}
-      />
+      {viewingReport && (
+        <AnnualReportModal
+          reRegistration={viewingReport}
+          onClose={() => setViewingReport(null)}
+          onApprove={(id) => updateReRegistrationStatus(id, 'valide_encadrant')}
+        />
+      )}
     </div>
   );
 };

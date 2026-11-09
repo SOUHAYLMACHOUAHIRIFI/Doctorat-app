@@ -19,10 +19,18 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
   const [feedback, setFeedback] = useState(application?.supervisorFeedback || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!application) return null;
+  // Synchronize state when application changes
+  React.useEffect(() => {
+    if (application) {
+      setDecision('favorable');
+      setGrade(application.supervisorGrade || '18/20');
+      setFeedback(application.supervisorFeedback || '');
+    }
+  }, [application]);
 
   // Retrieve candidate documents with deep merging between application.documents and context
   const candidateDocs: CandidateDocument[] = React.useMemo(() => {
+    if (!application) return [];
     const list: CandidateDocument[] = [];
     if (application.documents && Array.isArray(application.documents)) {
       list.push(...application.documents);
@@ -40,6 +48,8 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     });
     return list;
   }, [application, documents]);
+
+  if (!application) return null;
 
   const docTypes: { type: CandidateDocument['type']; label: string }[] = [
     { type: 'baccalaureat', label: '1. Diplôme du Baccalauréat' },

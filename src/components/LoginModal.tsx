@@ -242,22 +242,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
             <div className="flex items-center justify-between text-[11px]">
               <span className="font-bold text-neutral-800 flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 text-neutral-600" />
-                <span>Accès rapide aux 3 Espaces Doctoraux</span>
+                <span>Sélection rapide d’un compte institutionnel</span>
               </span>
-              <span className="text-[10px] text-neutral-500 font-mono">Mot de passe : usmba2026</span>
             </div>
             <p className="text-[11px] text-neutral-500">
-              Cliquez sur l’un des 3 comptes certifiés pour vous connecter directement :
+              Cliquez sur un profil pour pré-remplir votre email, puis saisissez manuellement votre mot de passe :
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
               {/* 1. CANDIDATE */}
               <button
                 type="button"
-                onClick={() => {
-                  handleSelectEmail('youssef.elamrani@usmba.ac.ma');
-                  setPassword('usmba2026');
-                }}
+                onClick={() => handleSelectEmail('youssef.elamrani@usmba.ac.ma')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Candidat Youssef El Amrani"
               >
@@ -269,10 +265,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 2. SUPERVISOR */}
               <button
                 type="button"
-                onClick={() => {
-                  handleSelectEmail('karim.bennani@usmba.ac.ma');
-                  setPassword('usmba2026');
-                }}
+                onClick={() => handleSelectEmail('karim.bennani@usmba.ac.ma')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Directeur Pr. Karim Bennani"
               >
@@ -284,10 +277,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               {/* 3. ADMINISTRATION CED */}
               <button
                 type="button"
-                onClick={() => {
-                  handleSelectEmail('ced.admin@usmba.ac.ma');
-                  setPassword('usmba2026');
-                }}
+                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
                 title="Administration CED USMBA"
               >

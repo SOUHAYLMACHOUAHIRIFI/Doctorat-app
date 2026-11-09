@@ -128,6 +128,8 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
         {
           nom: nom.trim(),
           prenom: prenom.trim(),
+          firstName: prenom.trim(),
+          lastName: nom.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
           cin: cin.trim().toUpperCase(),

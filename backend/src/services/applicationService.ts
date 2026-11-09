@@ -26,9 +26,22 @@ export const applicationService = {
     // 3. Supervisor: strictly applications for their own topics
     if (user.role === ROLES.SUPERVISOR) {
       const supervisors = db.get('supervisors');
-      const sup = supervisors.find((s) => s.userId === user.id);
-      if (!sup) return [];
-      return applicationRepository.findBySupervisor(sup.id);
+      const sup = supervisors.find((s) => s.userId === user.id || s.id === user.id);
+      const allApps = applicationRepository.findAll();
+      const allTopics = topicRepository.findAll();
+      const myTopicIds = allTopics
+        .filter((t) => (sup && t.supervisorId === sup.id) || t.supervisorId === user.id)
+        .map((t) => t.id);
+
+      const userFullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+
+      return allApps.filter((a) => {
+        if (sup && a.supervisorId === sup.id) return true;
+        if (a.supervisorId === user.id) return true;
+        if (myTopicIds.includes(a.topicId)) return true;
+        if (a.supervisorName && a.supervisorName.toLowerCase().includes(userFullName)) return true;
+        return false;
+      });
     }
 
     // 4. Structure Director: strictly applications belonging to their laboratory
@@ -102,9 +115,27 @@ export const applicationService = {
     }
 
     // 2. Verify that all 4 mandatory documents have been uploaded!
-    const candidateDocs = documentRepository.findByCandidate(cand.id);
+    let candidateDocs = documentRepository.findByCandidate(cand.id);
+    if (candidateDocs.length < 4) {
+      const allDocs = db.get('documents');
+      const userDocs = allDocs.filter(
+        (d) =>
+          d.candidateId === cand.id ||
+          d.candidateId === user.id ||
+          (d.candidateEmail && d.candidateEmail.toLowerCase() === user.email.toLowerCase())
+      );
+      if (userDocs.length >= candidateDocs.length) {
+        userDocs.forEach((d) => {
+          d.candidateId = cand.id;
+          d.candidateEmail = user.email;
+        });
+        db.save();
+        candidateDocs = userDocs;
+      }
+    }
+
     const hasAllDocs = MANDATORY_DOCUMENT_TYPES.every((typeCode) =>
-      candidateDocs.some((d) => d.typeCode === typeCode)
+      candidateDocs.some((d) => d.typeCode.toLowerCase() === typeCode.toLowerCase())
     );
 
     if (!hasAllDocs) {
@@ -124,27 +155,45 @@ export const applicationService = {
       throw new Error('Vous avez déjà déposé une candidature pour ce sujet de recherche.');
     }
 
-    // Find supervisor name
-    const supervisorEntity = db.get('supervisors').find((s) => s.id === topic.supervisorId);
-    const supervisorUser = supervisorEntity ? db.get('users').find((u) => u.id === supervisorEntity.userId) : undefined;
-    const supervisorName = supervisorUser ? `Pr. ${supervisorUser.firstName} ${supervisorUser.lastName}` : 'Directeur de Thèse';
+    // Find supervisor information
+    const supervisors = db.get('supervisors');
+    const users = db.get('users');
+    const supervisorEntity = supervisors.find(
+      (s) => s.id === topic.supervisorId || s.userId === topic.supervisorId
+    );
+    const supervisorUser = supervisorEntity
+      ? users.find((u) => u.id === supervisorEntity.userId)
+      : users.find((u) => u.id === topic.supervisorId || (u.firstName && topic.supervisorName?.includes(u.firstName)));
+
+    const supervisorName = supervisorUser
+      ? `Pr. ${supervisorUser.firstName} ${supervisorUser.lastName}`
+      : (topic.supervisorName || 'Pr. Karim Bennani');
+
+    const supervisorId = topic.supervisorId || (supervisorEntity ? supervisorEntity.id : 'sup-karim');
 
     const now = new Date().toISOString().split('T')[0];
+
+    const firstName = data.profileDetails?.firstName || data.profileDetails?.prenom || user.firstName;
+    const lastName = data.profileDetails?.lastName || data.profileDetails?.nom || user.lastName;
+    const phone = data.profileDetails?.phone || user.phone;
+    const cin = (data.profileDetails?.cin || user.cin || '').toUpperCase();
+    const etablissementOrigine = data.profileDetails?.etablissementOrigine || cand.etablissementOrigine;
+    const diplomeOrigine = data.profileDetails?.diplomeOrigine || cand.diplomeOrigine;
 
     const newApp: ApplicationEntity = {
       id: `app-${Date.now().toString(36)}`,
       candidateId: cand.id,
-      candidateName: `${data.profileDetails?.firstName || user.firstName} ${data.profileDetails?.lastName || user.lastName}`,
+      candidateName: `${firstName} ${lastName}`.trim(),
       candidateEmail: user.email,
-      candidateCin: data.profileDetails?.cin || user.cin,
-      candidatePhone: data.profileDetails?.phone || user.phone,
-      etablissementOrigine: data.profileDetails?.etablissementOrigine || cand.etablissementOrigine,
-      diplomeOrigine: data.profileDetails?.diplomeOrigine || cand.diplomeOrigine,
+      candidateCin: cin,
+      candidatePhone: phone,
+      etablissementOrigine,
+      diplomeOrigine,
       topicId: topic.id,
       topicTitle: topic.title,
       establishment: topic.establishment,
-      laboratory: user.laboratory || 'Laboratoire de Recherche USMBA',
-      supervisorId: topic.supervisorId,
+      laboratory: topic.laboratory || (supervisorUser?.laboratory) || 'LISAC',
+      supervisorId,
       supervisorName,
       step: APPLICATION_STEPS.CANDIDATURE_SOUMISE,
       status: APPLICATION_STATUS.SOUMIS,

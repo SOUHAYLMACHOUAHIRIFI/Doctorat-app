@@ -4,14 +4,19 @@ export const applyTopicSchema = z.object({
   topicId: z.string().min(1, 'Identifiant du sujet requis'),
   notes: z.string().optional(),
   motivationLetter: z.string().optional(),
-  profileDetails: z.object({
-    firstName: z.string().min(2),
-    lastName: z.string().min(2),
-    phone: z.string().min(8),
-    cin: z.string().min(4),
-    etablissementOrigine: z.string().min(2),
-    diplomeOrigine: z.string().min(2),
-  }).optional(),
+  profileDetails: z
+    .object({
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      prenom: z.string().optional(),
+      nom: z.string().optional(),
+      phone: z.string().optional(),
+      cin: z.string().optional(),
+      etablissementOrigine: z.string().optional(),
+      diplomeOrigine: z.string().optional(),
+      email: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const evaluateApplicationSupervisorSchema = z.object({

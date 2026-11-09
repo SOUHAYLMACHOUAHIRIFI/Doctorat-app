@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Edit2, Check, X, FileText, UserCheck, Shield, ChevronRight, Eye, AlertCircle, Building2, User, Phone, Mail, Award, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit2, Check, X, FileText, UserCheck, Shield, ChevronRight, Eye, AlertCircle, Building2, User, Phone, Mail, Award, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ThesisTopic, CandidateApplication, ApplicationStep, ApplicationStatus, ReRegistration } from '../types';
 import { EditTopicModal } from './EditTopicModal';
 import { ApplicantReviewModal } from './ApplicantReviewModal';
@@ -14,6 +14,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const {
     topics,
     applications,
+    refreshApplications,
     reRegistrations,
     updateApplicationProgress,
     updateReRegistrationStatus,
@@ -27,21 +28,47 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const [reviewingApplication, setReviewingApplication] = useState<CandidateApplication | null>(null);
   const [viewingReport, setViewingReport] = useState<ReRegistration | null>(null);
 
+  // Refresh applications when switching to candidatures tab
+  useEffect(() => {
+    if (activeTab === 'candidatures') {
+      refreshApplications();
+    }
+  }, [activeTab, refreshApplications]);
+
   const myTopics = topics.filter(
     (t) =>
       t.supervisorId === currentUser?.id ||
       t.supervisorName === currentUser?.name ||
       (currentUser?.name && t.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
   );
-  const myApplications =
-    currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'directeur_these'
-      ? applications
-      : applications.filter(
-          (a) =>
-            a.supervisorId === currentUser?.id ||
-            a.supervisorName === currentUser?.name ||
-            (currentUser?.name && a.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()))
-        );
+
+  const myTopicIds = new Set(myTopics.map((t) => t.id));
+
+  const myApplications = applications.filter((a) => {
+    // 1. Matched by topic owned by this supervisor
+    if (myTopicIds.has(a.topicId)) return true;
+    // 2. Matched by direct supervisorId (user ID or entity ID)
+    if (currentUser?.id) {
+      if (a.supervisorId === currentUser.id) return true;
+      if (currentUser.id === 'usr-prof-karim' && (a.supervisorId === 'sup-karim' || a.supervisorName?.includes('Karim'))) return true;
+      if (currentUser.id === 'usr-prof-fatima' && (a.supervisorId === 'sup-fatima' || a.supervisorName?.includes('Fatima'))) return true;
+    }
+    // 3. Matched by supervisor name
+    if (
+      currentUser?.name &&
+      a.supervisorName &&
+      (a.supervisorName.toLowerCase().includes(currentUser.name.toLowerCase()) ||
+        currentUser.name.toLowerCase().includes(a.supervisorName.toLowerCase()))
+    ) {
+      return true;
+    }
+    // 4. Role fallback: supervisor role with scoped backend applications
+    if (currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'directeur_these') {
+      return true;
+    }
+    return false;
+  });
+
   const myReRegistrations =
     currentUser?.role === 'SUPERVISOR' || currentUser?.role === 'directeur_these'
       ? reRegistrations
@@ -201,8 +228,30 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
       {/* TAB 1: Mes Sujets de Thèse */}
       {activeTab === 'sujets' && (
         <div className="space-y-4">
-          {/* Mobile Card View (block sm:hidden) */}
-          <div className="block sm:hidden space-y-3">
+          {myTopics.length === 0 ? (
+            <div className="p-8 sm:p-12 text-center border border-dashed border-neutral-200 rounded-2xl bg-white space-y-3">
+              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-400 mx-auto flex items-center justify-center">
+                <FileText className="w-5 h-5" />
+              </div>
+              <p className="font-semibold text-neutral-900 text-sm">Aucun sujet de thèse proposé pour le moment.</p>
+              <p className="text-xs text-neutral-500 max-w-md mx-auto">
+                Proposez un nouveau sujet de recherche doctorale pour ouvrir l'appel à candidatures et accueillir de futurs doctorants au laboratoire.
+              </p>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={onOpenAddTopic}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Proposer un sujet de thèse</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card View (block sm:hidden) */}
+              <div className="block sm:hidden space-y-3">
             {myTopics.map((topic) => (
               <div
                 key={topic.id}
@@ -327,6 +376,8 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
               </tbody>
             </table>
           </div>
+            </>
+          )}
         </div>
       )}
 
@@ -334,8 +385,14 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
       {activeTab === 'candidatures' && (
         <div className="space-y-4">
           {myApplications.length === 0 ? (
-            <div className="p-8 sm:p-12 text-center border border-dashed border-neutral-200 rounded-2xl text-neutral-500 text-sm bg-white">
-              Aucun candidat n'a encore postulé à vos sujets de thèse.
+            <div className="p-8 sm:p-12 text-center border border-dashed border-neutral-200 rounded-2xl bg-white space-y-2">
+              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-400 mx-auto flex items-center justify-center">
+                <UserCheck className="w-5 h-5" />
+              </div>
+              <p className="font-semibold text-neutral-900 text-sm">Aucune candidature reçue pour le moment.</p>
+              <p className="text-xs text-neutral-500 max-w-md mx-auto leading-relaxed">
+                Dès qu'un candidat postule à l'un de vos sujets de thèse, son dossier complet, ses coordonnées et ses 4 pièces justificatives certifiées s'afficheront ici en temps réel pour votre évaluation pédagogique.
+              </p>
             </div>
           ) : (
             <>

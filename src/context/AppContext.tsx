@@ -54,6 +54,8 @@ export interface AppContextType {
     details?: {
       nom?: string;
       prenom?: string;
+      firstName?: string;
+      lastName?: string;
       phone?: string;
       cin?: string;
       email?: string;
@@ -615,6 +617,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     details?: {
       nom?: string;
       prenom?: string;
+      firstName?: string;
+      lastName?: string;
       phone?: string;
       cin?: string;
       email?: string;
@@ -624,16 +628,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     attachedDocs?: CandidateDocument[]
   ) => {
     try {
-      await api.applications.submit({
+      const res = await api.applications.submit({
         topicId,
         notes: notes || 'Candidature formelle et 4 pièces justificatives transmises.',
         motivationLetter: activityReport,
         profileDetails: details,
       });
+
+      if (res.success && res.application) {
+        const norm = normalizeApplication(res.application);
+        setApplications((prev) => [norm, ...prev.filter((a) => a.id !== norm.id)]);
+      }
+
       await Promise.allSettled([refreshApplications(), refreshTopics()]);
       showToast('Candidature déposée avec succès (Étape 2 : Candidature soumise)');
     } catch (err: any) {
       showToast(err.message || 'Erreur lors du dépôt de candidature.');
+      throw err;
     }
   };
 

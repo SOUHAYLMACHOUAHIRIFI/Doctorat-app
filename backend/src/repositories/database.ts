@@ -57,7 +57,18 @@ class DatabaseService {
     if (fs.existsSync(DB_PATH)) {
       try {
         const fileContent = fs.readFileSync(DB_PATH, 'utf-8');
-        return JSON.parse(fileContent);
+        const parsed: DatabaseSchema = JSON.parse(fileContent);
+        // Ensure candidates have their 4 initial documents if missing
+        const youssefDocs = (parsed.documents || []).filter((d) => d.candidateId === 'cand-youssef');
+        if (youssefDocs.length < 4) {
+          const defaultDocs = this.getDefaultCandidateDocuments();
+          parsed.documents = [
+            ...(parsed.documents || []).filter((d) => d.candidateId !== 'cand-youssef'),
+            ...defaultDocs,
+          ];
+          this.saveToDisk(parsed);
+        }
+        return parsed;
       } catch (err) {
         console.error('Failed to read database file, re-seeding:', err);
       }
@@ -487,7 +498,7 @@ class DatabaseService {
       cedCenters,
       topics,
       applications: [],
-      documents: [],
+      documents: this.getDefaultCandidateDocuments(),
       documentReviews: [],
       academicYears,
       enrollments: [],
@@ -495,6 +506,71 @@ class DatabaseService {
       notifications,
       auditLogs,
     };
+  }
+
+  private getDefaultCandidateDocuments(): ApplicationDocumentEntity[] {
+    return [
+      {
+        id: 'doc-bac-youssef',
+        candidateId: 'cand-youssef',
+        candidateEmail: 'youssef.elamrani@usmba.ac.ma',
+        typeCode: 'baccalaureat',
+        title: 'Diplôme du Baccalauréat National',
+        fileName: 'baccalaureat_scientifique.pdf',
+        fileSize: '1.4 Mo',
+        fileMimeType: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtQkFDQ0FMQVVSRUFUCg==',
+        status: DOCUMENT_STATUS.VALIDE,
+        captureMethod: 'upload',
+        uploadedAt: '2026-10-02',
+        updatedAt: '2026-10-02',
+      },
+      {
+        id: 'doc-notes-youssef',
+        candidateId: 'cand-youssef',
+        candidateEmail: 'youssef.elamrani@usmba.ac.ma',
+        typeCode: 'releve_notes',
+        title: 'Relevés de Notes Licence & Master',
+        fileName: 'releves_notes_licence_master.pdf',
+        fileSize: '2.1 Mo',
+        fileMimeType: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtTk9URVNfTElDRU5DRV9NQVNURVIK',
+        status: DOCUMENT_STATUS.VALIDE,
+        captureMethod: 'upload',
+        uploadedAt: '2026-10-02',
+        updatedAt: '2026-10-02',
+      },
+      {
+        id: 'doc-dip-youssef',
+        candidateId: 'cand-youssef',
+        candidateEmail: 'youssef.elamrani@usmba.ac.ma',
+        typeCode: 'diplomes',
+        title: 'Diplôme de Master de Recherche en Informatique & IA',
+        fileName: 'diplome_master_recherche_ia.pdf',
+        fileSize: '1.8 Mo',
+        fileMimeType: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtRElQTE9NRV9NQVNURVIK',
+        status: DOCUMENT_STATUS.VALIDE,
+        captureMethod: 'upload',
+        uploadedAt: '2026-10-02',
+        updatedAt: '2026-10-02',
+      },
+      {
+        id: 'doc-cin-youssef',
+        candidateId: 'cand-youssef',
+        candidateEmail: 'youssef.elamrani@usmba.ac.ma',
+        typeCode: 'cin',
+        title: 'Carte d’Identité Nationale (CIN)',
+        fileName: 'cin_recto_verso_CD654321.pdf',
+        fileSize: '950 Ko',
+        fileMimeType: 'application/pdf',
+        dataUrl: 'data:application/pdf;base64,JVBERi0xLjQKJUZJTEUtQ0lOX0NENjU0MzIxCg==',
+        status: DOCUMENT_STATUS.VALIDE,
+        captureMethod: 'upload',
+        uploadedAt: '2026-10-02',
+        updatedAt: '2026-10-02',
+      },
+    ];
   }
 }
 

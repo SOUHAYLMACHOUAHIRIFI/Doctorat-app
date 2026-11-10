@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { CandidateView } from './components/CandidateView';
@@ -16,6 +16,15 @@ import { CheckCircle2, ShieldCheck, UserCheck, GraduationCap, ArrowRight, Lock }
 
 const MainLayout: React.FC = () => {
   const { currentUser, role, currentView, setCurrentView, toastMessage, isLoadingAuth } = useApp();
+
+  // Scroll to top on every view or user change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [currentView, currentUser?.id, currentUser?.role]);
 
   // Modals state
   const [isLoginOpen, setIsLoginOpen] = useState(false);

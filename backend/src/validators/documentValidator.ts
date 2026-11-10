@@ -18,6 +18,7 @@ export const uploadDocumentSchema = z.object({
     return map[normalized] || (normalized as any);
   }).pipe(z.enum(validDocumentTypes)),
   fileName: z.string().min(1, 'Nom de fichier requis').trim(),
+  title: z.string().optional(),
   fileSize: z.string().default('1.8 Mo'),
   fileMimeType: z.string().optional().default('application/pdf'),
   dataUrl: z.string().min(5, 'Données du document manquantes'),

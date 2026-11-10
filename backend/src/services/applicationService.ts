@@ -47,20 +47,17 @@ function populateApplicationWithDocuments(app: ApplicationEntity): ApplicationEn
     cin: 'Carte d’Identité Nationale (CIN)',
   };
 
-  const docsByType = new Map<string, ApplicationDocumentEntity>();
-  for (const doc of matchedDocs) {
+  const allFormattedDocs: ApplicationDocumentEntity[] = matchedDocs.map((doc) => {
     const rawType = (doc.typeCode || (doc as any).type || '').toLowerCase();
     const normalizedType = typeMap[rawType] || rawType;
-    if (!docsByType.has(normalizedType)) {
-      docsByType.set(normalizedType, {
-        ...doc,
-        typeCode: normalizedType,
-        title: doc.title || titleMap[normalizedType] || 'Document Justificatif',
-        candidateEmail: doc.candidateEmail || candidateEmail,
-        status: doc.status || 'VALIDE',
-      });
-    }
-  }
+    return {
+      ...doc,
+      typeCode: normalizedType,
+      title: doc.title || titleMap[normalizedType] || 'Document Justificatif',
+      candidateEmail: doc.candidateEmail || candidateEmail,
+      status: doc.status || 'VALIDE',
+    };
+  });
 
   // Calculate currentStep reliably based on step number and status
   let resolvedStep = app.currentStep ?? app.step ?? 2;
@@ -77,7 +74,7 @@ function populateApplicationWithDocuments(app: ApplicationEntity): ApplicationEn
     ...app,
     step: resolvedStep,
     currentStep: resolvedStep,
-    documents: Array.from(docsByType.values()),
+    documents: allFormattedDocs,
   };
 }
 

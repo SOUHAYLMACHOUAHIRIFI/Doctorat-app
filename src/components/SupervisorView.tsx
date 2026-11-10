@@ -28,8 +28,13 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const [reviewingApplication, setReviewingApplication] = useState<CandidateApplication | null>(null);
   const [viewingReport, setViewingReport] = useState<ReRegistration | null>(null);
 
-  // Refresh applications when switching to candidatures tab
+  // Refresh applications and scroll to top when switching tabs
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
     if (activeTab === 'candidatures') {
       refreshApplications();
     }

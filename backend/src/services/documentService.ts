@@ -54,6 +54,7 @@ export const documentService = {
     user: SafeUser,
     data: {
       typeCode: string;
+      title?: string;
       fileName: string;
       fileSize: string;
       fileMimeType: string;
@@ -91,7 +92,7 @@ export const documentService = {
       candidateId: cand.id,
       candidateEmail: user.email,
       typeCode: data.typeCode,
-      title: titles[data.typeCode] || 'Document Justificatif',
+      title: data.title?.trim() || titles[data.typeCode] || 'Document Justificatif',
       fileName: data.fileName,
       fileSize: data.fileSize || '1.8 Mo',
       fileMimeType: data.fileMimeType || 'application/pdf',

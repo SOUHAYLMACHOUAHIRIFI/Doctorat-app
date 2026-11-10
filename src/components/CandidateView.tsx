@@ -23,6 +23,7 @@ import {
   Mail,
   Save,
   Lock,
+  Plus,
 } from 'lucide-react';
 import { ESTABLISHMENTS } from '../data/mockData';
 import { DocumentScannerModal } from './DocumentScannerModal';
@@ -115,18 +116,35 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     );
   }, [documents, currentUser]);
 
-  const candidateDocsMap = useMemo(() => {
-    const map: Partial<Record<DocumentType, CandidateDocument>> = {};
+  // Group all candidate documents by mandatory category
+  const docsGroupedByType = useMemo(() => {
+    const map: Record<DocumentType, CandidateDocument[]> = {
+      baccalaureat: [],
+      releve_notes: [],
+      diplomes: [],
+      cin: [],
+    };
     candidateDocs.forEach((d) => {
-      if (d.status !== 'A_CORRIGER' && (d.status as string) !== 'rejete') {
-        map[d.type] = d;
+      const rawType = (d.type || d.typeCode || '').toLowerCase();
+      let norm: DocumentType = 'releve_notes';
+      if (rawType.includes('bac')) norm = 'baccalaureat';
+      else if (rawType.includes('note') || rawType.includes('releve')) norm = 'releve_notes';
+      else if (rawType.includes('diplom')) norm = 'diplomes';
+      else if (rawType.includes('cin')) norm = 'cin';
+
+      if (map[norm] && d.status !== 'A_CORRIGER' && (d.status as string) !== 'rejete') {
+        map[norm].push(d);
       }
     });
     return map;
   }, [candidateDocs]);
 
-  const candidateDocsCount = Object.keys(candidateDocsMap).length;
-  const isDossierComplet = candidateDocsCount >= 4;
+  const completedCategoriesCount = REQUIRED_DOCS.filter(
+    (req) => (docsGroupedByType[req.type] || []).length > 0
+  ).length;
+  const isDossierComplet = completedCategoriesCount === 4;
+  const candidateDocsCount = completedCategoriesCount;
+  const totalUploadedDocsCount = candidateDocs.length;
 
   // Scoped candidatures for current user
   const candidateApps = useMemo(() => {
@@ -154,18 +172,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     }
   }, [currentUser]);
 
-  // Initial step management
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+
+  // Scroll to top automatically when active step or selected application changes
   useEffect(() => {
-    if (!currentUser) {
-      setActiveStep('catalogue');
-    } else if (!isDossierComplet) {
-      setActiveStep('documents');
-    } else if (candidateApps.length > 0) {
-      setActiveStep('suivi');
-    } else {
-      setActiveStep('catalogue');
-    }
-  }, [currentUser, isDossierComplet, candidateApps.length]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeStep, selectedAppId]);
 
   // Filter topics
   const filteredTopics = useMemo(() => {
@@ -193,8 +207,6 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     { step: 4, label: '4. Validation Structure', desc: 'Examen par la commission CED' },
     { step: 5, label: '5. Admission', desc: 'Inscription doctorale définitive validée' },
   ];
-
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
 
   const activeApp = useMemo(() => {
     if (selectedAppId) {
@@ -266,9 +278,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     fileName: string,
     fileSize: string,
     dataUrl: string,
-    method: 'upload'
+    method: 'upload',
+    customTitle?: string
   ) => {
-    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
+    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method, customTitle);
     setScanningDocType(null);
   };
 
@@ -721,14 +734,15 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {REQUIRED_DOCS.map((req) => {
-                const uploadedDoc = candidateDocs.find((d) => d.type === req.type);
+                const typeDocs = docsGroupedByType[req.type] || [];
+                const hasDocs = typeDocs.length > 0;
                 const IconComp = req.icon;
 
                 return (
                   <div
                     key={req.type}
                     className={`p-5 rounded-2xl border bg-white flex flex-col justify-between transition-all shadow-xs ${
-                      uploadedDoc
+                      hasDocs
                         ? 'border-neutral-200 hover:border-neutral-300'
                         : 'border-dashed border-neutral-300 hover:border-neutral-900'
                     }`}
@@ -739,7 +753,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                              uploadedDoc
+                              hasDocs
                                 ? 'bg-neutral-900 text-white'
                                 : 'bg-neutral-100 text-neutral-700'
                             }`}
@@ -754,10 +768,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                           </div>
                         </div>
 
-                        {uploadedDoc ? (
+                        {hasDocs ? (
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
                             <Check className="w-3 h-3" />
-                            <span>Enregistré</span>
+                            <span>{typeDocs.length} fichier{typeDocs.length > 1 ? 's' : ''}</span>
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
@@ -766,102 +780,111 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         )}
                       </div>
 
-                      {/* Document Thumbnail preview */}
-                      {uploadedDoc && (
-                        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2.5">
-                          <div className="flex items-center gap-3">
-                            {uploadedDoc.dataUrl && uploadedDoc.dataUrl.startsWith('data:image/') ? (
-                              <img
-                                src={uploadedDoc.dataUrl}
-                                alt={uploadedDoc.title}
-                                onClick={() =>
-                                  openAttachment({
-                                    title: uploadedDoc.title,
-                                    subtitle: `Document certifié — ${uploadedDoc.fileName}`,
-                                    content: `Document certifié conforme pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nDéposé le : ${uploadedDoc.uploadedAt}`,
-                                    author: currentUser?.name || 'Candidat',
-                                    date: uploadedDoc.uploadedAt,
-                                    dataUrl: uploadedDoc.dataUrl,
-                                  })
-                                }
-                                className="w-12 h-12 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
-                                <span>PDF</span>
-                                <span className="text-[8px] text-neutral-500 font-sans">FICHIER</span>
-                              </div>
-                            )}
+                      {/* Multiple Documents List */}
+                      {hasDocs && (
+                        <div className="space-y-2 pt-1">
+                          {typeDocs.map((doc, docIdx) => (
+                            <div
+                              key={doc.id || docIdx}
+                              className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2"
+                            >
+                              <div className="flex items-center gap-3">
+                                {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
+                                  <img
+                                    src={doc.dataUrl}
+                                    alt={doc.title}
+                                    onClick={() =>
+                                      openAttachment({
+                                        title: doc.title,
+                                        subtitle: `Document certifié — ${doc.fileName}`,
+                                        content: `Document certifié conforme pour le candidat ${currentUser?.name} (${currentUser?.cin}).\n\nFichier : ${doc.fileName}\nTaille : ${doc.fileSize}\nDéposé le : ${doc.uploadedAt}`,
+                                        author: currentUser?.name || 'Candidat',
+                                        date: doc.uploadedAt,
+                                        dataUrl: doc.dataUrl,
+                                      })
+                                    }
+                                    className="w-10 h-10 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-neutral-200 flex flex-col items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0 border border-neutral-300">
+                                    <span>PDF</span>
+                                  </div>
+                                )}
 
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="font-mono text-neutral-900 font-bold truncate max-w-[150px] sm:max-w-[200px]">
-                                  {uploadedDoc.fileName}
-                                </span>
-                                <span className="text-[10px] text-neutral-600 font-semibold bg-white border border-neutral-200 px-1.5 py-0.5 rounded-md shrink-0">
-                                  {uploadedDoc.fileSize}
-                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-mono text-neutral-900 font-bold truncate max-w-[150px] sm:max-w-[200px]">
+                                      {doc.title || doc.fileName}
+                                    </span>
+                                    <span className="text-[10px] text-neutral-600 font-semibold bg-white border border-neutral-200 px-1.5 py-0.5 rounded-md shrink-0">
+                                      {doc.fileSize}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-0.5 truncate">
+                                    <span className="font-mono truncate">{doc.fileName}</span>
+                                    <span>·</span>
+                                    <span>{doc.uploadedAt}</span>
+                                  </div>
+                                </div>
                               </div>
 
-                              <div className="flex items-center gap-2 text-[10px] text-neutral-500 mt-1">
-                                <span className="flex items-center gap-1 text-neutral-600 font-medium">
-                                  <Upload className="w-3 h-3 text-neutral-500" />
-                                  <span>Téléversé par fichier</span>
-                                </span>
-                                <span>·</span>
-                                <span>{uploadedDoc.uploadedAt}</span>
+                              <div className="flex items-center justify-between pt-1.5 text-[11px] text-neutral-600 border-t border-neutral-200">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openAttachment({
+                                      title: doc.title,
+                                      subtitle: `Pièce justificative - ${doc.fileName}`,
+                                      content: `Pièce certifiée conforme pour le candidat ${currentUser?.name} (CIN: ${currentUser?.cin}).\n\nFichier : ${doc.fileName}\nTaille : ${doc.fileSize}\nValidé au guichet numérique USMBA.`,
+                                      author: currentUser?.name || 'Candidat',
+                                      date: doc.uploadedAt,
+                                      dataUrl: doc.dataUrl,
+                                    })
+                                  }
+                                  className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Consulter le fichier</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => deleteCandidateDocument(doc.id)}
+                                  className="text-rose-600 hover:text-rose-700 font-medium text-xs flex items-center gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Retirer</span>
+                                </button>
                               </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-600 border-t border-neutral-200">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openAttachment({
-                                  title: uploadedDoc.title,
-                                  subtitle: `Pièce justificative - ${uploadedDoc.fileName}`,
-                                  content: `Pièce certifiée conforme pour le candidat ${currentUser?.name} (CIN: ${currentUser?.cin}).\n\nFichier : ${uploadedDoc.fileName}\nTaille : ${uploadedDoc.fileSize}\nValidé au guichet numérique USMBA.`,
-                                  author: currentUser?.name || 'Candidat',
-                                  date: uploadedDoc.uploadedAt,
-                                  dataUrl: uploadedDoc.dataUrl,
-                                })
-                              }
-                              className="text-neutral-900 font-semibold underline flex items-center gap-1 hover:text-black"
-                            >
-                              <Eye className="w-3 h-3" />
-                              <span>Voir le document</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => deleteCandidateDocument(uploadedDoc.id)}
-                              className="text-rose-600 hover:text-rose-700 font-medium text-xs"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
+                          ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Trigger File Upload Modal */}
+                    {/* Trigger File Upload Modal (Add another or initial upload) */}
                     <div className="pt-3">
                       <button
                         type="button"
                         onClick={() => openUploadModal(req.type, req.label)}
                         className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all shadow-xs ${
-                          uploadedDoc
+                          hasDocs
                             ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 border border-neutral-200'
                             : 'bg-neutral-900 text-white hover:bg-neutral-800'
                         }`}
                       >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>
-                          {uploadedDoc
-                            ? 'Remplacer ce document'
-                            : 'Importer ce document (PDF / Image)'}
-                        </span>
+                        {hasDocs ? (
+                          <>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Ajouter un document ({req.label})</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Téléverser cette pièce (PDF / Image)</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

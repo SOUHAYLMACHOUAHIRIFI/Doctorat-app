@@ -56,6 +56,11 @@ export const StructureDirectorView: React.FC = () => {
   const [loadingAudit, setLoadingAudit] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
     if (activeTab === 'stats') {
       refreshStats();
     } else if (activeTab === 'audit' && isSuperAdminOrCed) {

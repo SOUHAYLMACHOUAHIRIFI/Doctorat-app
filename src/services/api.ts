@@ -156,6 +156,7 @@ export const api = {
 
     async upload(payload: {
       typeCode: string;
+      title?: string;
       fileName: string;
       fileSize?: string;
       fileMimeType?: string;

@@ -28,7 +28,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     }
   }, [application]);
 
-  // Retrieve candidate documents with deep merging between application.documents and context
+  // Retrieve candidate documents without dropping multiple files per type
   const candidateDocs: CandidateDocument[] = React.useMemo(() => {
     if (!application) return [];
     const list: CandidateDocument[] = [];
@@ -41,8 +41,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
         (d.candidateId && application.candidateId && d.candidateId === application.candidateId)
     );
     matchingContext.forEach((d) => {
-      const typeKey = (d.type || d.typeCode || '').toLowerCase();
-      if (!list.some((existing) => (existing.type || existing.typeCode || '').toLowerCase() === typeKey)) {
+      if (!list.some((existing) => existing.id === d.id || existing.fileName === d.fileName)) {
         list.push(d);
       }
     });
@@ -58,8 +57,8 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     { type: 'cin', label: '4. Carte d’Identité Nationale (CIN)' },
   ];
 
-  const findDocForType = (type: CandidateDocument['type']) => {
-    return candidateDocs.find((d) => {
+  const findDocsForType = (type: CandidateDocument['type']) => {
+    return candidateDocs.filter((d) => {
       const t = (d.type || d.typeCode || '').toLowerCase();
       const target = type.toLowerCase();
       if (t === target) return true;
@@ -71,7 +70,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
     });
   };
 
-  const submittedDocsCount = docTypes.filter((dt) => !!findDocForType(dt.type)).length;
+  const submittedDocsCount = docTypes.filter((dt) => findDocsForType(dt.type).length > 0).length;
   const isDossierComplet = submittedDocsCount >= 4;
 
   const handleDecisionSubmit = async () => {
@@ -199,84 +198,98 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {docTypes.map((dt) => {
-                const doc = findDocForType(dt.type);
+                const docs = findDocsForType(dt.type);
+                const hasDocs = docs.length > 0;
 
                 return (
                   <div
                     key={dt.type}
-                    onClick={() => doc && handleOpenDocument(doc)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
-                      doc
-                        ? 'bg-white border-emerald-300 hover:border-emerald-500 shadow-xs hover:shadow-md'
-                        : 'bg-rose-50/40 border-dashed border-rose-300 opacity-90 cursor-not-allowed'
+                    className={`p-4 rounded-xl border flex flex-col justify-between transition-all ${
+                      hasDocs
+                        ? 'bg-white border-neutral-200 shadow-xs'
+                        : 'bg-rose-50/40 border-dashed border-rose-300'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Thumbnail or File icon */}
-                        {doc?.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
-                          <img
-                            src={doc.dataUrl}
-                            alt={doc.title}
-                            className="w-10 h-10 object-cover rounded-lg border border-emerald-200 shrink-0"
-                          />
-                        ) : (
-                          <div
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border ${
-                              doc
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                : 'bg-neutral-100 border-neutral-200 text-neutral-400'
-                            }`}
-                          >
-                            <FileText className="w-4 h-4" />
-                          </div>
-                        )}
-
+                    <div className="space-y-2.5">
+                      {/* Category Header */}
+                      <div className="flex items-start justify-between gap-2 border-b border-neutral-100 pb-2">
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-neutral-900 truncate">
+                          <h4 className="text-xs font-bold text-neutral-900 truncate">
                             {dt.label}
-                          </div>
-                          <div
-                            className={`text-[11px] truncate font-mono mt-0.5 ${
-                              doc ? 'text-emerald-800 font-semibold' : 'text-neutral-500'
-                            }`}
-                          >
-                            {doc ? doc.fileName : 'Pièce manquante'}
-                          </div>
+                          </h4>
+                          <span className="text-[10px] text-neutral-500">
+                            {hasDocs
+                              ? `${docs.length} fichier${docs.length > 1 ? 's' : ''} justificatif${docs.length > 1 ? 's' : ''}`
+                              : 'Pièce justificative requise'}
+                          </span>
                         </div>
+
+                        {hasDocs ? (
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1 shrink-0">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{docs.length} fichier{docs.length > 1 ? 's' : ''}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shrink-0">
+                            <AlertCircle className="w-3 h-3 text-rose-600" />
+                            <span>Non fournie</span>
+                          </span>
+                        )}
                       </div>
 
-                      {doc ? (
-                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1 shrink-0">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>{doc.fileSize || '1.8 Mo'}</span>
-                        </span>
+                      {/* File Items */}
+                      {hasDocs ? (
+                        <div className="space-y-2">
+                          {docs.map((doc, docIdx) => (
+                            <div
+                              key={doc.id || docIdx}
+                              onClick={() => handleOpenDocument(doc)}
+                              className="p-2.5 bg-neutral-50 hover:bg-neutral-100/80 border border-neutral-200 rounded-lg cursor-pointer transition-colors group flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
+                                  <img
+                                    src={doc.dataUrl}
+                                    alt={doc.title}
+                                    className="w-8 h-8 object-cover rounded-md border border-neutral-300 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-md bg-neutral-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
+                                    PDF
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <span className="text-xs font-bold text-neutral-900 block truncate group-hover:text-black">
+                                    {doc.title || doc.fileName}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-500 font-mono block truncate">
+                                    {doc.fileName} · {doc.fileSize}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDocument(doc);
+                                }}
+                                className="px-2 py-1 text-[11px] font-semibold text-neutral-900 bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors inline-flex items-center gap-1 shrink-0 shadow-2xs"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Voir</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 shrink-0">
-                          <AlertCircle className="w-3 h-3 text-rose-600" />
-                          <span>Non fournie</span>
-                        </span>
+                        <div className="py-2 text-[11px] text-rose-600 italic">
+                          Aucun document fourni par le candidat pour cette pièce obligatoire.
+                        </div>
                       )}
                     </div>
-
-                    {doc ? (
-                      <div className="mt-3 pt-2 border-t border-emerald-100 flex items-center justify-between text-xs">
-                        <span className="text-[10px] text-neutral-500">
-                          {doc.uploadedAt} · {doc.captureMethod === 'camera' ? 'Scan Caméra' : 'Numérisé'}
-                        </span>
-                        <span className="font-bold text-emerald-800 hover:text-emerald-950 underline flex items-center gap-1 text-[11px]">
-                          <Eye className="w-3 h-3 text-emerald-700" />
-                          <span>Consulter la pièce</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="mt-2 text-[10px] text-rose-600 italic">
-                        Document manquant dans le dossier du candidat
-                      </div>
-                    )}
                   </div>
                 );
               })}

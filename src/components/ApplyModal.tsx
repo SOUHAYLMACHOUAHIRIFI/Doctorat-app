@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Eye,
   ShieldCheck,
+  Plus,
 } from 'lucide-react';
 import { DocumentScannerModal } from './DocumentScannerModal';
 
@@ -96,9 +97,10 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     fileName: string,
     fileSize: string,
     dataUrl: string,
-    method: 'camera' | 'upload'
+    method: 'upload',
+    customTitle?: string
   ) => {
-    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method);
+    await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method, customTitle);
     setScanningType(null);
   };
 
@@ -376,88 +378,111 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {REQUIRED_DOC_TYPES.map((rd) => {
-                  const doc = candidateDocs.find((d) => d.type === rd.type);
+                  const docs = candidateDocs.filter((d) => d.type === rd.type);
+                  const hasDocs = docs.length > 0;
 
                   return (
                     <div
                       key={rd.type}
-                      className={`p-3.5 rounded-xl border transition-all ${
-                        doc
+                      className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
+                        hasDocs
                           ? 'bg-neutral-50 border-neutral-200 shadow-2xs'
                           : 'bg-white border-dashed border-rose-200 hover:border-neutral-900'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-bold text-neutral-900">{rd.label}</div>
-                          <div className="text-[10px] text-neutral-500 mt-0.5">{rd.desc}</div>
-                        </div>
-
-                        {doc ? (
-                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
-                            <Check className="w-3 h-3" />
-                            <span>Lié</span>
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200 shrink-0">
-                            Requis
-                          </span>
-                        )}
-                      </div>
-
-                      {doc ? (
-                        <div className="mt-3 pt-2.5 border-t border-neutral-200 flex items-center gap-2.5">
-                          {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
-                            <img
-                              src={doc.dataUrl}
-                              alt={doc.title}
-                              className="w-9 h-9 object-cover rounded-lg border border-neutral-300 shadow-xs shrink-0 cursor-pointer hover:opacity-90"
-                              onClick={() =>
-                                openAttachment({
-                                  title: doc.title,
-                                  subtitle: `Aperçu document — ${doc.fileName}`,
-                                  content: `Scan certifié conforme pour le candidat ${nom} ${prenom} (CIN: ${cin}).\n\nTaille : ${doc.fileSize}\nNumérisé le : ${doc.uploadedAt}`,
-                                  author: `${prenom} ${nom}`,
-                                  date: doc.uploadedAt,
-                                  dataUrl: doc.dataUrl,
-                                })
-                              }
-                            />
-                          ) : (
-                            <div className="w-9 h-9 rounded-lg bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-700 font-mono shrink-0">
-                              PDF
-                            </div>
-                          )}
-
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-mono font-bold text-neutral-900 truncate">
-                              {doc.fileName}
-                            </div>
-                            <div className="text-[10px] text-neutral-500">
-                              {doc.fileSize} · {doc.captureMethod === 'camera' ? 'Caméra' : 'Import'}
-                            </div>
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-xs font-bold text-neutral-900">{rd.label}</div>
+                            <div className="text-[10px] text-neutral-500 mt-0.5">{rd.desc}</div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleOpenScanner(rd.type, rd.label)}
-                            className="text-[11px] font-semibold text-neutral-800 hover:text-neutral-900 underline shrink-0"
-                          >
-                            Remplacer
-                          </button>
+                          {hasDocs ? (
+                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
+                              <Check className="w-3 h-3" />
+                              <span>{docs.length} fichier{docs.length > 1 ? 's' : ''} lié{docs.length > 1 ? 's' : ''}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200 shrink-0">
+                              Requis
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenScanner(rd.type, rd.label)}
-                            className="flex-1 py-1.5 px-2 bg-neutral-900 text-white rounded-lg text-[11px] font-semibold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-1.5 shadow-xs"
-                          >
-                            <Camera className="w-3 h-3" />
-                            <span>Scanner ou Importer</span>
-                          </button>
-                        </div>
-                      )}
+
+                        {hasDocs ? (
+                          <div className="space-y-2 pt-1 border-t border-neutral-200/80">
+                            {docs.map((doc, docIdx) => (
+                              <div
+                                key={doc.id || docIdx}
+                                className="flex items-center justify-between gap-2 p-2 bg-white rounded-lg border border-neutral-200 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {doc.dataUrl && doc.dataUrl.startsWith('data:image/') ? (
+                                    <img
+                                      src={doc.dataUrl}
+                                      alt={doc.title}
+                                      className="w-7 h-7 object-cover rounded border border-neutral-300 shrink-0"
+                                    />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded bg-neutral-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
+                                      PDF
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <span className="font-mono text-[11px] font-bold text-neutral-900 block truncate max-w-[140px] sm:max-w-[180px]">
+                                      {doc.title || doc.fileName}
+                                    </span>
+                                    <span className="text-[9px] text-neutral-500 font-mono block">
+                                      {doc.fileName} ({doc.fileSize})
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    openAttachment({
+                                      title: doc.title,
+                                      subtitle: `Aperçu document — ${doc.fileName}`,
+                                      content: `Scan certifié conforme pour le candidat ${nom} ${prenom} (CIN: ${cin}).\n\nTaille : ${doc.fileSize}\nNumérisé le : ${doc.uploadedAt}`,
+                                      author: `${prenom} ${nom}`,
+                                      date: doc.uploadedAt,
+                                      dataUrl: doc.dataUrl,
+                                    })
+                                  }
+                                  className="text-[11px] font-semibold text-neutral-800 hover:text-black underline shrink-0"
+                                >
+                                  Voir
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="pt-2.5 mt-2 border-t border-neutral-200/60">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenScanner(rd.type, rd.label)}
+                          className={`w-full py-1.5 px-2.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-2xs ${
+                            hasDocs
+                              ? 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200 border border-neutral-200'
+                              : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                          }`}
+                        >
+                          {hasDocs ? (
+                            <>
+                              <Plus className="w-3 h-3" />
+                              <span>Ajouter un fichier ({rd.label})</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-3 h-3" />
+                              <span>Importer ce justificatif</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

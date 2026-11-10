@@ -94,7 +94,8 @@ export interface AppContextType {
     fileName: string,
     fileSize?: string,
     dataUrl?: string,
-    captureMethod?: 'camera' | 'upload'
+    captureMethod?: 'camera' | 'upload',
+    customTitle?: string
   ) => Promise<CandidateDocument | undefined>;
   deleteCandidateDocument: (docId: string) => Promise<void>;
   reviewCandidateDocument: (docId: string, status: 'VALIDE' | 'REJETE' | 'A_CORRIGER', reason?: string) => Promise<void>;
@@ -792,7 +793,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fileName: string,
     fileSize = '1.8 Mo',
     dataUrl?: string,
-    captureMethod: 'camera' | 'upload' = 'upload'
+    captureMethod: 'camera' | 'upload' = 'upload',
+    customTitle?: string
   ): Promise<CandidateDocument | undefined> => {
     if (!currentUser) return;
 
@@ -803,9 +805,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cin: 'Carte d’Identité Nationale (CIN)',
     };
 
+    const docTitle = customTitle?.trim() || titleMap[type] || 'Document Justificatif';
+
     try {
       const res = await api.documents.upload({
         typeCode: type,
+        title: docTitle,
         fileName,
         fileSize,
         fileMimeType: dataUrl?.startsWith('data:image/') ? 'image/jpeg' : 'application/pdf',
@@ -815,12 +820,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (res.success && res.document) {
         const doc = normalizeDocument(res.document, currentUser.email);
-        setDocuments((prev) => {
-          const filtered = prev.filter((d) => d.type !== type);
-          return [doc, ...filtered];
-        });
+        setDocuments((prev) => [doc, ...prev]);
         await refreshDocuments();
-        showToast(`Pièce téléversée avec succès : ${doc.title}`);
+        showToast(`Document ajouté avec succès : ${doc.title} (${doc.fileName})`);
         return doc;
       }
     } catch (err: any) {
@@ -832,7 +834,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         candidateId: currentUser.id,
         type,
         typeCode: type,
-        title: titleMap[type] || 'Document Justificatif',
+        title: docTitle,
         fileName,
         fileSize,
         uploadedAt: new Date().toISOString().split('T')[0],
@@ -840,11 +842,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dataUrl,
         captureMethod: 'upload',
       };
-      setDocuments((prev) => {
-        const filtered = prev.filter((d) => d.type !== type);
-        return [fallbackDoc, ...filtered];
-      });
-      showToast(`Pièce enregistrée avec succès : ${fallbackDoc.title}`);
+      setDocuments((prev) => [fallbackDoc, ...prev]);
+      showToast(`Document enregistré avec succès : ${fallbackDoc.title} (${fallbackDoc.fileName})`);
       return fallbackDoc;
     }
   };

@@ -15,6 +15,9 @@ async function startServer() {
   const app = express();
   const PORT = ENV.PORT || 3000;
 
+  // Trust reverse proxy (Cloud Run, Envoy, Nginx) so client IP and protocol are properly recognized
+  app.set('trust proxy', 1);
+
   // 1. Security & Core Middlewares
   app.use(
     helmet({

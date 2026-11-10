@@ -92,38 +92,20 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
 
   const handleConfirm = () => {
     if (!docType) return;
+    if (!uploadedDataUrl) {
+      setErrorMessage('Veuillez sélectionner un fichier certifié avant de valider.');
+      return;
+    }
     setIsProcessing(true);
 
     try {
-      if (uploadedDataUrl) {
-        onSave(
-          docType,
-          selectedFileName || `${docTitle}.pdf`,
-          selectedFileSize || '1.8 Mo',
-          uploadedDataUrl,
-          'upload'
-        );
-      } else {
-        // Fallback placeholder file
-        const defaultCanvas = document.createElement('canvas');
-        defaultCanvas.width = 800;
-        defaultCanvas.height = 1000;
-        const dCtx = defaultCanvas.getContext('2d');
-        if (dCtx) {
-          dCtx.fillStyle = '#ffffff';
-          dCtx.fillRect(0, 0, 800, 1000);
-          dCtx.fillStyle = '#171717';
-          dCtx.font = 'bold 22px sans-serif';
-          dCtx.fillText(`DOCUMENT JUSTIFICATIF : ${docTitle.toUpperCase()}`, 50, 80);
-          dCtx.font = '13px monospace';
-          dCtx.fillText(`Certifié conforme — Université Sidi Mohamed Ben Abdellah (USMBA)`, 50, 120);
-          dCtx.fillText(`Dépôt numérique : ${new Date().toLocaleDateString('fr-FR')}`, 50, 150);
-          dCtx.strokeStyle = '#e5e5e5';
-          dCtx.strokeRect(40, 40, 720, 920);
-        }
-        const generatedData = defaultCanvas.toDataURL('image/jpeg', 0.9);
-        onSave(docType, `${docTitle}_Certifie.pdf`, '1.5 Mo', generatedData, 'upload');
-      }
+      onSave(
+        docType,
+        selectedFileName || `${docTitle}.pdf`,
+        selectedFileSize || '1.8 Mo',
+        uploadedDataUrl,
+        'upload'
+      );
       handleClose();
     } finally {
       setIsProcessing(false);

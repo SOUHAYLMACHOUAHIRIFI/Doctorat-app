@@ -3,7 +3,7 @@ import { topicRepository } from '../repositories/topicRepository';
 import { documentRepository } from '../repositories/documentRepository';
 import { db } from '../repositories/database';
 import { ApplicationEntity, SafeUser, DoctoralStudentEntity } from '../types';
-import { ROLES, APPLICATION_STEPS, APPLICATION_STATUS, MANDATORY_DOCUMENT_TYPES } from '../config/constants';
+import { ROLES, APPLICATION_STEPS, APPLICATION_STATUS, MANDATORY_DOCUMENT_TYPES, MAX_APPLICATIONS_PER_CANDIDATE } from '../config/constants';
 import { auditService } from './auditService';
 import { notificationService } from './notificationService';
 
@@ -62,8 +62,21 @@ function populateApplicationWithDocuments(app: ApplicationEntity): ApplicationEn
     }
   }
 
+  // Calculate currentStep reliably based on step number and status
+  let resolvedStep = app.currentStep ?? app.step ?? 2;
+  const statusStr = String(app.status || '').toUpperCase();
+  if (statusStr === 'ADMIS' || statusStr === 'CED_APPROVED' || statusStr === 'ACCEPTED' || statusStr === 'VALIDE_STRUCTURE') {
+    resolvedStep = 5;
+  } else if (statusStr === 'SUPERVISOR_APPROVED' || statusStr === 'EVALUATED' || statusStr === 'AVIS_FAVORABLE') {
+    resolvedStep = 4;
+  } else if (statusStr === 'SOUMIS' || statusStr === 'SUBMITTED') {
+    resolvedStep = 2;
+  }
+
   return {
     ...app,
+    step: resolvedStep,
+    currentStep: resolvedStep,
     documents: Array.from(docsByType.values()),
   };
 }
@@ -217,8 +230,13 @@ export const applicationService = {
     if (!topic) throw new Error('Sujet de recherche non trouvé.');
     if (topic.status !== 'VALIDE') throw new Error('Ce sujet n’est pas encore ouvert aux candidatures.');
 
-    // 4. Prevent duplicate application to the same topic
+    // 4. Strict limit of 3 applications per candidate (Reglement doctoral USMBA)
     const existing = applicationRepository.findByCandidate(cand.id);
+    if (existing.length >= MAX_APPLICATIONS_PER_CANDIDATE) {
+      throw new Error(`Vous avez atteint la limite maximale de ${MAX_APPLICATIONS_PER_CANDIDATE} candidatures autorisées.`);
+    }
+
+    // 5. Prevent duplicate application to the same topic
     if (existing.some((a) => a.topicId === data.topicId)) {
       throw new Error('Vous avez déjà déposé une candidature pour ce sujet de recherche.');
     }
@@ -263,7 +281,8 @@ export const applicationService = {
       laboratory: (topic as any).laboratory || (supervisorUser?.laboratory) || 'LISAC',
       supervisorId,
       supervisorName,
-      step: APPLICATION_STEPS.CANDIDATURE_SOUMISE,
+      step: APPLICATION_STEPS.CANDIDATURE_SOUMISE, // Step 2: Candidature soumise
+      currentStep: APPLICATION_STEPS.CANDIDATURE_SOUMISE,
       status: APPLICATION_STATUS.SOUMIS,
       notes: data.notes || 'Candidature formelle et 4 pièces justificatives certifiées.',
       motivationLetter: data.motivationLetter,
@@ -342,19 +361,25 @@ export const applicationService = {
     let nextStatus = app.status;
 
     if (decision === 'FAVORABLE') {
-      nextStep = APPLICATION_STEPS.VALIDATION_STRUCTURE; // Step 5: Structure commission
-      nextStatus = APPLICATION_STATUS.AVIS_FAVORABLE;
+      // Step 4: Validation Structure (Avis favorable émis, passe à la commission CED)
+      nextStep = APPLICATION_STEPS.VALIDATION_STRUCTURE; // 4
+      nextStatus = APPLICATION_STATUS.SUPERVISOR_APPROVED; // 'SUPERVISOR_APPROVED'
     } else if (decision === 'A_CORRIGER') {
+      nextStep = APPLICATION_STEPS.CANDIDATURE_SOUMISE; // 2
       nextStatus = APPLICATION_STATUS.A_CORRIGER;
     } else {
+      nextStep = APPLICATION_STEPS.EVALUATION_DIRECTEUR; // 3
       nextStatus = APPLICATION_STATUS.AVIS_DEFAVORABLE;
     }
 
     const updated = applicationRepository.update(appId, {
       step: nextStep,
+      currentStep: nextStep,
       status: nextStatus,
+      supervisorDecision: decision,
       supervisorGrade: grade || app.supervisorGrade,
       supervisorFeedback: feedback?.trim(),
+      updatedAt: new Date().toISOString().split('T')[0],
     });
 
     if (!updated) throw new Error('Erreur de mise à jour.');
@@ -365,7 +390,7 @@ export const applicationService = {
       'EVALUATE_APPLICATION_SUPERVISOR',
       'Application',
       appId,
-      { decision, grade, feedback },
+      { decision, grade, feedback, nextStep, nextStatus },
       supervisorUser.id
     );
 
@@ -377,7 +402,7 @@ export const applicationService = {
         notificationService.notify(
           candidateUser.id,
           `Avis émis par le directeur de thèse (${decision})`,
-          `Votre encadrant a émis un avis "${decision}" sur votre candidature : ${feedback}`,
+          `Votre encadrant a validé votre dossier avec l’avis "${decision}" : ${feedback}`,
           decision === 'FAVORABLE' ? 'SUCCESS' : 'WARNING',
           '/candidat'
         );
@@ -396,13 +421,16 @@ export const applicationService = {
     const app = applicationRepository.findById(appId);
     if (!app) throw new Error('Candidature non trouvée.');
 
-    let nextStep = APPLICATION_STEPS.DECISION_FINALE;
-    let nextStatus = decision === 'VALIDE' ? APPLICATION_STATUS.ADMIS : APPLICATION_STATUS.REFUSE;
+    let nextStep = APPLICATION_STEPS.ADMISSION_CED; // Step 5: Admission
+    let nextStatus = decision === 'VALIDE' ? APPLICATION_STATUS.CED_APPROVED : APPLICATION_STATUS.REFUSE;
 
     const updated = applicationRepository.update(appId, {
       step: nextStep,
+      currentStep: nextStep,
       status: nextStatus,
+      structureDecision: decision,
       structureFeedback: feedback.trim(),
+      updatedAt: new Date().toISOString().split('T')[0],
     });
 
     if (!updated) throw new Error('Erreur de mise à jour.');

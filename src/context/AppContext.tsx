@@ -84,6 +84,7 @@ export interface AppContextType {
     feedback?: string
   ) => Promise<void>;
   currentCandidateApp?: CandidateApplication;
+  candidateApplications: CandidateApplication[];
 
   // Candidate Documents management (Bac, Notes, Diplômes, CIN)
   documents: CandidateDocument[];
@@ -97,10 +98,6 @@ export interface AppContextType {
   ) => Promise<CandidateDocument | undefined>;
   deleteCandidateDocument: (docId: string) => Promise<void>;
   reviewCandidateDocument: (docId: string, status: 'VALIDE' | 'REJETE' | 'A_CORRIGER', reason?: string) => Promise<void>;
-  resetCandidateDossier: () => Promise<void>;
-  seedCandidateDocuments: () => Promise<void>;
-
-  // Re-registrations
   reRegistrations: ReRegistration[];
   refreshReRegistrations: () => Promise<void>;
   addReRegistration: (year: number, summary: string, pubs: number, comms: number, progress: number) => Promise<void>;
@@ -226,18 +223,51 @@ function normalizeDocument(d: any, fallbackEmail?: string): CandidateDocument {
 }
 
 function normalizeApplication(a: any): CandidateApplication {
-  const stepMap: Record<string, ApplicationStep> = {
-    BROUILLON: 1,
-    PIECES_DEPOT: 1,
-    SOUMIS: 2,
-    VERIFICATION_ADMIN: 3,
-    AVIS_PEDAGOGIQUE: 4,
-    VALIDATION_STRUCTURE: 5,
-    DELIBERATION_CED: 6,
-    INSCRIPTION_VALIDEE: 7,
-  };
+  const statusStr = String(a.status || 'SOUMIS').toUpperCase();
 
-  const currentStep = (typeof a.currentStep === 'number' ? a.currentStep : (stepMap[a.currentStep] || 2)) as ApplicationStep;
+  // Dynamically resolve currentStep across the 5 official milestones:
+  // 1: Pièces scannées (prérequis)
+  // 2: Candidature soumise (dossier transmis au directeur de thèse)
+  // 3: Évaluation Directeur (en cours d'évaluation pédagogique)
+  // 4: Validation Structure (Avis directeur validé SUPERVISOR_APPROVED / EVALUATED, examen commission CED)
+  // 5: Admission (Validation finale CED / CED_APPROVED / ACCEPTED / ADMIS)
+  let resolvedStep = 2 as ApplicationStep;
+  if (
+    statusStr === 'ADMIS' ||
+    statusStr === 'CED_APPROVED' ||
+    statusStr === 'ACCEPTED' ||
+    statusStr === 'VALIDE_STRUCTURE'
+  ) {
+    resolvedStep = 5;
+  } else if (
+    statusStr === 'SUPERVISOR_APPROVED' ||
+    statusStr === 'EVALUATED' ||
+    statusStr === 'AVIS_FAVORABLE'
+  ) {
+    resolvedStep = 4;
+  } else if (statusStr === 'AVIS_DEFAVORABLE') {
+    resolvedStep = 3;
+  } else if (statusStr === 'SOUMIS' || statusStr === 'SUBMITTED' || statusStr === 'A_CORRIGER') {
+    resolvedStep = 2;
+  } else if (typeof a.currentStep === 'number' && a.currentStep >= 1 && a.currentStep <= 5) {
+    resolvedStep = a.currentStep as ApplicationStep;
+  } else if (typeof a.step === 'number' && a.step >= 1 && a.step <= 5) {
+    resolvedStep = a.step as ApplicationStep;
+  }
+
+  // Normalize status for consistent display and logic
+  let normalizedStatus: ApplicationStatus = 'SOUMIS';
+  if (statusStr === 'SUPERVISOR_APPROVED' || statusStr === 'AVIS_FAVORABLE' || statusStr === 'EVALUATED') {
+    normalizedStatus = 'SUPERVISOR_APPROVED';
+  } else if (statusStr === 'CED_APPROVED' || statusStr === 'ADMIS' || statusStr === 'ACCEPTED' || statusStr === 'VALIDE_STRUCTURE') {
+    normalizedStatus = 'CED_APPROVED';
+  } else if (statusStr === 'A_CORRIGER') {
+    normalizedStatus = 'A_CORRIGER';
+  } else if (statusStr === 'AVIS_DEFAVORABLE') {
+    normalizedStatus = 'AVIS_DEFAVORABLE';
+  } else if (statusStr === 'REFUSE' || statusStr === 'REJETE_STRUCTURE') {
+    normalizedStatus = 'REFUSE';
+  }
 
   return {
     id: a.id,
@@ -255,17 +285,17 @@ function normalizeApplication(a: any): CandidateApplication {
     laboratory: a.laboratory || a.topic?.laboratory || 'LISAC',
     supervisorName: a.supervisorName || a.topic?.supervisorName || 'Pr. Karim Bennani',
     supervisorId: a.supervisorId || a.topic?.supervisorId,
-    status: (a.status === 'SOUMIS' ? 'soumis' : a.status === 'AVIS_FAVORABLE' ? 'avis_favorable' : a.status === 'ADMIS' ? 'admis' : a.status === 'REFUSE' ? 'refuse' : a.status || 'soumis') as any,
-    currentStep,
+    status: normalizedStatus,
+    currentStep: resolvedStep,
     submittedDate: a.submittedDate ? a.submittedDate.split('T')[0] : (a.createdAt ? a.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
     documents: Array.isArray(a.documents) ? a.documents.map((doc: any) => normalizeDocument(doc)) : [],
     activityReport: a.activityReport || a.researchProposal,
     notes: a.notes,
     motivationLetter: a.motivationLetter,
-    supervisorDecision: a.supervisorDecision,
+    supervisorDecision: a.supervisorDecision || (statusStr === 'SUPERVISOR_APPROVED' || statusStr === 'AVIS_FAVORABLE' ? 'FAVORABLE' : undefined),
     supervisorFeedback: a.supervisorFeedback,
     supervisorGrade: a.supervisorGrade,
-    structureDecision: a.structureDecision,
+    structureDecision: a.structureDecision || (statusStr === 'CED_APPROVED' || statusStr === 'ADMIS' ? 'VALIDE' : undefined),
     structureFeedback: a.structureFeedback,
     commissionNotes: a.commissionNotes,
   };
@@ -679,6 +709,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     try {
       const normalizedDec = decision.toUpperCase() as 'FAVORABLE' | 'DEFAVORABLE' | 'A_CORRIGER';
+      const targetStep: ApplicationStep = normalizedDec === 'FAVORABLE' ? 4 : normalizedDec === 'A_CORRIGER' ? 2 : 3;
+      const targetStatus: ApplicationStatus =
+        normalizedDec === 'FAVORABLE' ? 'SUPERVISOR_APPROVED' : normalizedDec === 'A_CORRIGER' ? 'A_CORRIGER' : 'AVIS_DEFAVORABLE';
+
+      // Instant optimistic update in React state
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.id === appId
+            ? {
+                ...app,
+                currentStep: targetStep,
+                status: targetStatus,
+                supervisorDecision: normalizedDec,
+                supervisorGrade: grade || app.supervisorGrade,
+                supervisorFeedback: feedback || app.supervisorFeedback,
+              }
+            : app
+        )
+      );
+
       await api.applications.evaluateSupervisor(appId, normalizedDec, grade, feedback);
       await refreshApplications();
 
@@ -701,6 +751,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     try {
       const normalizedDec = decision.toUpperCase() === 'VALIDE' || decision.toUpperCase() === 'ADMIS' ? 'VALIDE' : 'REJETE';
+      const targetStep: ApplicationStep = normalizedDec === 'VALIDE' ? 5 : 4;
+      const targetStatus: ApplicationStatus = normalizedDec === 'VALIDE' ? 'CED_APPROVED' : 'REFUSE';
+
+      // Instant optimistic update in React state
+      setApplications((prev) =>
+        prev.map((app) =>
+          app.id === appId
+            ? {
+                ...app,
+                currentStep: targetStep,
+                status: targetStatus,
+                structureDecision: normalizedDec,
+                structureFeedback: feedback || app.structureFeedback,
+              }
+            : app
+        )
+      );
+
       await api.applications.validateStructure(
         appId,
         normalizedDec as 'VALIDE' | 'REJETE',
@@ -803,93 +871,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resetCandidateDossier = async () => {
-    try {
-      for (const doc of documents) {
-        try {
-          await api.documents.delete(doc.id);
-        } catch (e) {
-          /* ignore */
-        }
-      }
-      setDocuments([]);
-      await refreshDocuments();
-      showToast('Dossier candidat réinitialisé (0/4 pièces). Étape 1 active.');
-    } catch (err: any) {
-      setDocuments([]);
-      showToast('Dossier candidat réinitialisé (0/4 pièces).');
-    }
-  };
 
-  const seedCandidateDocuments = async () => {
-    if (!currentUser) return;
-    const today = new Date().toISOString().split('T')[0];
-
-    const pieces: { type: DocumentType; fileName: string; title: string }[] = [
-      { type: 'baccalaureat', fileName: 'BAC_Sciences_Maths_Certifie.pdf', title: 'Diplôme du Baccalauréat' },
-      { type: 'releve_notes', fileName: 'Releves_Notes_S1_S4_Master.pdf', title: 'Fiches et Relevés de Notes' },
-      { type: 'diplomes', fileName: 'Diplome_Master_Recherche_USMBA.pdf', title: 'Diplômes (Licence / Master / Ingénieur)' },
-      { type: 'cin', fileName: `Scan_CIN_${currentUser.cin || 'CD654321'}.pdf`, title: 'Carte d’Identité Nationale (CIN)' },
-    ];
-
-    try {
-      const generatedDocs: CandidateDocument[] = [];
-      for (const p of pieces) {
-        const c = document.createElement('canvas');
-        c.width = 600;
-        c.height = 800;
-        const ctx = c.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, 600, 800);
-          ctx.fillStyle = '#171717';
-          ctx.font = 'bold 20px sans-serif';
-          ctx.fillText(`DOCUMENT ACADÉMIQUE : ${p.title}`, 40, 60);
-          ctx.font = '12px monospace';
-          ctx.fillText(`Candidat : ${currentUser.name} (${currentUser.email})`, 40, 100);
-          ctx.fillText(`CIN : ${currentUser.cin || 'CD654321'}`, 40, 125);
-          ctx.fillText(`Horodatage : ${today}`, 40, 150);
-          ctx.strokeStyle = '#e5e5e5';
-          ctx.strokeRect(30, 30, 540, 740);
-        }
-        const dataUrl = c.toDataURL('image/jpeg', 0.85);
-
-        try {
-          const res = await api.documents.upload({
-            typeCode: p.type,
-            fileName: p.fileName,
-            fileSize: '1.4 Mo',
-            fileMimeType: 'image/jpeg',
-            dataUrl,
-            captureMethod: 'upload',
-          });
-          if (res.success && res.document) {
-            generatedDocs.push(normalizeDocument(res.document, currentUser.email));
-          }
-        } catch (e) {
-          generatedDocs.push({
-            id: `doc-${p.type}-${Date.now().toString(36)}`,
-            candidateEmail: currentUser.email,
-            candidateId: currentUser.id,
-            type: p.type,
-            typeCode: p.type,
-            title: p.title,
-            fileName: p.fileName,
-            fileSize: '1.4 Mo',
-            uploadedAt: today,
-            status: 'valide',
-            dataUrl,
-            captureMethod: 'upload',
-          });
-        }
-      }
-      setDocuments(generatedDocs);
-      await refreshDocuments();
-      showToast('4 pièces certifiées enregistrées avec succès (Dossier 4/4 complet).');
-    } catch (err: any) {
-      showToast(err.message || 'Erreur lors de la génération des pièces.');
-    }
-  };
 
   // Re-registrations
   const addReRegistration = async (
@@ -965,11 +947,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setViewingAttachment(null);
   };
 
-  const currentCandidateApp = currentUser
-    ? applications.find(
-        (a) => a.candidateEmail.toLowerCase() === currentUser.email.toLowerCase() || a.candidateId === currentUser.id
+  const candidateApplications = currentUser
+    ? applications.filter(
+        (a) =>
+          (a.candidateEmail && a.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+          a.candidateId === currentUser.id
       )
-    : undefined;
+    : [];
+
+  const currentCandidateApp = candidateApplications[0];
 
   const currentCandidateReReg = currentUser
     ? reRegistrations.find(
@@ -1001,13 +987,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         evaluateApplicationSupervisor,
         validateApplicationStructure,
         currentCandidateApp,
+        candidateApplications,
         documents,
         refreshDocuments,
         uploadCandidateDocument,
         deleteCandidateDocument,
         reviewCandidateDocument,
-        resetCandidateDossier,
-        seedCandidateDocuments,
+
         reRegistrations,
         refreshReRegistrations,
         addReRegistration,

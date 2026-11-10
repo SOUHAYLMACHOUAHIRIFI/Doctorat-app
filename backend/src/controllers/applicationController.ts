@@ -60,13 +60,19 @@ export const applicationController = {
       }
 
       const validated = applyTopicSchema.parse(req.body);
-      const app = applicationService.submitApplication(req.user, validated);
-
-      res.status(201).json({
-        success: true,
-        message: 'Candidature déposée avec succès. Vos 4 pièces justificatives y sont associées.',
-        application: app,
-      });
+      try {
+        const app = applicationService.submitApplication(req.user, validated);
+        res.status(201).json({
+          success: true,
+          message: 'Candidature déposée avec succès. Vos 4 pièces justificatives y sont associées.',
+          application: app,
+        });
+      } catch (err: any) {
+        res.status(400).json({
+          success: false,
+          message: err.message || 'Erreur lors du dépôt de candidature.',
+        });
+      }
     } catch (err) {
       next(err);
     }

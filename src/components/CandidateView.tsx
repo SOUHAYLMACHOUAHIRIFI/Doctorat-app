@@ -36,6 +36,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   const {
     topics,
     currentCandidateApp,
+    candidateApplications,
     currentCandidateReReg,
     currentUser,
     applications,
@@ -43,8 +44,6 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     documents,
     uploadCandidateDocument,
     deleteCandidateDocument,
-    resetCandidateDossier,
-    seedCandidateDocuments,
     updateUserProfile,
     openAttachment,
     showToast,
@@ -129,6 +128,19 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
   const candidateDocsCount = Object.keys(candidateDocsMap).length;
   const isDossierComplet = candidateDocsCount >= 4;
 
+  // Scoped candidatures for current user
+  const candidateApps = useMemo(() => {
+    if (!currentUser) return [];
+    return applications.filter(
+      (a) =>
+        (a.candidateEmail && a.candidateEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
+        a.candidateId === currentUser.id
+    );
+  }, [applications, currentUser]);
+
+  const candidateAppsCount = candidateApps.length;
+  const hasReachedMaxApplications = candidateAppsCount >= 3;
+
   // Sync profile fields if currentUser changes
   useEffect(() => {
     if (currentUser) {
@@ -148,12 +160,12 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
       setActiveStep('catalogue');
     } else if (!isDossierComplet) {
       setActiveStep('documents');
-    } else if (currentCandidateApp) {
+    } else if (candidateApps.length > 0) {
       setActiveStep('suivi');
     } else {
       setActiveStep('catalogue');
     }
-  }, [currentUser, isDossierComplet, currentCandidateApp]);
+  }, [currentUser, isDossierComplet, candidateApps.length]);
 
   // Filter topics
   const filteredTopics = useMemo(() => {
@@ -182,13 +194,35 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     { step: 5, label: '5. Admission', desc: 'Inscription doctorale définitive validée' },
   ];
 
-  // Current step calculation:
-  // If candidate has an active application, currentStep is between 2 and 5.
-  let currentStep: number = currentCandidateApp?.currentStep || 0;
-  if (currentCandidateApp) {
-    if (currentCandidateApp.currentStep === 1) {
-      currentStep = isDossierComplet ? 2 : 1;
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+
+  const activeApp = useMemo(() => {
+    if (selectedAppId) {
+      const found = candidateApps.find((a) => a.id === selectedAppId);
+      if (found) return found;
     }
+    return candidateApps[0] || null;
+  }, [candidateApps, selectedAppId]);
+
+
+
+  // Current step calculation for the active application:
+  let currentStep: number = 1;
+  if (activeApp) {
+    const sStr = String(activeApp.status || '').toUpperCase();
+    if (sStr === 'ADMIS' || sStr === 'CED_APPROVED' || sStr === 'ACCEPTED' || sStr === 'VALIDE_STRUCTURE') {
+      currentStep = 5;
+    } else if (sStr === 'SUPERVISOR_APPROVED' || sStr === 'EVALUATED' || sStr === 'AVIS_FAVORABLE') {
+      currentStep = 4;
+    } else if (sStr === 'AVIS_DEFAVORABLE') {
+      currentStep = 3;
+    } else if (sStr === 'SOUMIS' || sStr === 'SUBMITTED' || sStr === 'A_CORRIGER') {
+      currentStep = 2;
+    } else if (typeof activeApp.currentStep === 'number') {
+      currentStep = activeApp.currentStep;
+    }
+  } else if (isDossierComplet) {
+    currentStep = 1;
   }
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -248,6 +282,10 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
       setActiveStep('documents');
       return;
     }
+    if (hasReachedMaxApplications) {
+      showToast('Vous avez atteint la limite maximale de 3 candidatures autorisées.');
+      return;
+    }
     onOpenApply(topic);
   };
 
@@ -295,41 +333,6 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Réinscription annuelle</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Demonstration & Simulation Bar for Evaluator */}
-      {currentUser && (
-        <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="font-semibold text-neutral-900">Mode Démonstration & Test du flux :</span>
-            <span className="text-neutral-500 hidden sm:inline">Vérifiez le verrouillage 0/4 vs 4/4 en 1 clic</span>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => {
-                resetCandidateDossier();
-                setActiveStep('documents');
-                setPreviewCatalogueWithoutDocs(false);
-              }}
-              className="px-2.5 py-1.5 bg-white border border-neutral-300 rounded-xl text-[11px] font-semibold text-neutral-800 hover:bg-neutral-100 transition-colors shadow-2xs"
-            >
-              🔄 Dossier vierge (0/4 scannées)
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                seedCandidateDocuments();
-                setActiveStep('catalogue');
-              }}
-              className="px-2.5 py-1.5 bg-neutral-900 text-white rounded-xl text-[11px] font-semibold hover:bg-neutral-800 transition-colors shadow-2xs"
-            >
-              ⚡ Simuler 4/4 pièces (Déverrouiller)
             </button>
           </div>
         </div>
@@ -461,12 +464,12 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                   activeStep === 'suivi'
                     ? 'bg-white text-neutral-900'
-                    : currentCandidateApp
+                    : activeApp
                     ? 'bg-emerald-600 text-white'
                     : 'bg-neutral-100 text-neutral-700'
                 }`}
               >
-                {currentCandidateApp ? <Check className="w-3.5 h-3.5" /> : '3'}
+                {activeApp ? <Check className="w-3.5 h-3.5" /> : '3'}
               </div>
               <div className="min-w-0">
                 <div className="font-bold truncate">Étape 3 : Suivi Progression</div>
@@ -475,12 +478,12 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     activeStep === 'suivi' ? 'text-neutral-300' : 'text-neutral-500'
                   }`}
                 >
-                  {currentCandidateApp ? `Étape ${currentStep}/5` : 'Suivi candidature'}
+                  {activeApp ? `Étape ${currentStep}/5 (${candidateAppsCount}/3)` : 'Suivi candidature'}
                 </div>
               </div>
             </div>
 
-            {currentCandidateApp ? (
+            {activeApp ? (
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded-md shrink-0 ml-1 ${
                   activeStep === 'suivi'
@@ -488,7 +491,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                 }`}
               >
-                Actif
+                {candidateAppsCount} dossier{candidateAppsCount > 1 ? 's' : ''}
               </span>
             ) : (
               <span className="text-[10px] text-neutral-400 shrink-0 ml-1">
@@ -947,6 +950,26 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               )}
 
+              {/* Quota & Maximum Applications Status Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl text-xs">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-neutral-700 shrink-0" />
+                  <span className="text-neutral-700">
+                    Quota de candidatures : <strong className="text-neutral-900 font-mono">{candidateAppsCount} / 3 autorisées</strong>
+                  </span>
+                </div>
+                {hasReachedMaxApplications ? (
+                  <span className="inline-flex items-center gap-1.5 text-amber-800 font-semibold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                    Vous avez atteint la limite maximale de 3 candidatures autorisées
+                  </span>
+                ) : (
+                  <span className="text-neutral-500">
+                    Il vous reste <strong className="text-neutral-900">{3 - candidateAppsCount}</strong> candidature{3 - candidateAppsCount > 1 ? 's' : ''} possible{3 - candidateAppsCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
           {/* Search Bar & Filters */}
           <div className="space-y-4">
             <div className="relative">
@@ -1070,6 +1093,21 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                             <Check className="w-3.5 h-3.5" />
                             <span>Candidature transmise</span>
                           </div>
+                        ) : hasReachedMaxApplications ? (
+                          <div className="w-full sm:w-auto flex flex-col items-center sm:items-end gap-1">
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-2 text-xs font-semibold rounded-xl bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed shadow-none"
+                              title="Vous avez atteint la limite maximale de 3 candidatures autorisées"
+                            >
+                              <Lock className="w-3.5 h-3.5 text-neutral-400" />
+                              <span>Limite atteinte (3/3)</span>
+                            </button>
+                            <span className="text-[10px] text-amber-700 font-medium text-center sm:text-right">
+                              Max 3 candidatures autorisées
+                            </span>
+                          </div>
                         ) : isAvailable ? (
                           <button
                             type="button"
@@ -1106,17 +1144,60 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
       {/* ========================================================================= */}
       {activeStep === 'suivi' && (
         <div className="space-y-6 sm:space-y-8">
-          {currentCandidateApp ? (
+          {/* Dossiers Switcher if multiple applications (1 to 3) */}
+          {candidateApps.length > 1 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl">
+              <span className="text-xs font-semibold text-neutral-700">
+                Vos candidatures actives ({candidateApps.length}/3) :
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                {candidateApps.map((app, idx) => {
+                  const isSelected = (activeApp?.id === app.id);
+                  let stepBadge = 2;
+                  const s = String(app.status || '').toUpperCase();
+                  if (s === 'ADMIS' || s === 'CED_APPROVED' || s === 'ACCEPTED' || s === 'VALIDE_STRUCTURE') stepBadge = 5;
+                  else if (s === 'SUPERVISOR_APPROVED' || s === 'EVALUATED' || s === 'AVIS_FAVORABLE') stepBadge = 4;
+                  else if (s === 'AVIS_DEFAVORABLE') stepBadge = 3;
+                  else if (typeof app.currentStep === 'number') stepBadge = app.currentStep;
+
+                  return (
+                    <button
+                      key={app.id}
+                      type="button"
+                      onClick={() => setSelectedAppId(app.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-2 border ${
+                        isSelected
+                          ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                          : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-300'
+                      }`}
+                    >
+                      <span className="font-bold">Choix #{idx + 1}</span>
+                      <span className="max-w-[130px] truncate">{app.topicTitle}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-700'
+                        }`}
+                      >
+                        Étape {stepBadge}/5
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeApp ? (
             <div className="p-4 sm:p-6 md:p-8 border border-neutral-200 rounded-2xl bg-white space-y-6 sm:space-y-8 shadow-xs">
               {/* Alert si correction demandée */}
-              {currentCandidateApp.status === 'a_corriger' && (
+              {activeApp.status === 'a_corriger' && (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>Correction requise par votre directeur de thèse :</span>
                   </div>
                   <p className="text-xs text-amber-800 leading-relaxed pl-6">
-                    "{currentCandidateApp.supervisorFeedback || 'Veuillez renouveler ou vérifier vos pièces scannées.'}"
+                    "{activeApp.supervisorFeedback || 'Veuillez renouveler ou vérifier vos pièces scannées.'}"
                   </p>
                   <div className="pl-6 pt-1">
                     <button
@@ -1138,21 +1219,21 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     Dossier de Candidature Doctorale Actif
                   </div>
                   <h2 className="text-base sm:text-lg md:text-xl font-bold text-neutral-900 leading-snug">
-                    {currentCandidateApp.topicTitle}
+                    {activeApp.topicTitle}
                   </h2>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500 pt-1">
-                    <span>{currentCandidateApp.establishment}</span>
+                    <span>{activeApp.establishment}</span>
                     <span aria-hidden="true">·</span>
-                    <span>{currentCandidateApp.laboratory}</span>
+                    <span>{activeApp.laboratory}</span>
                     <span aria-hidden="true">·</span>
-                    <span>Directeur : {currentCandidateApp.supervisorName}</span>
+                    <span>Directeur : {activeApp.supervisorName}</span>
                     <span aria-hidden="true">·</span>
-                    <span>Déposé le {currentCandidateApp.submittedDate}</span>
+                    <span>Déposé le {activeApp.submittedDate}</span>
                   </div>
                 </div>
 
                 <div className="w-full sm:w-auto pt-2 sm:pt-0">
-                  {confirmDeleteAppId === currentCandidateApp.id ? (
+                  {confirmDeleteAppId === activeApp.id ? (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-rose-50 border border-rose-200 rounded-xl">
                       <span className="text-xs text-rose-800 font-medium">
                         Confirmer le retrait du dossier ?
@@ -1160,7 +1241,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       <div className="flex items-center gap-2 mt-1 sm:mt-0">
                         <button
                           onClick={() => {
-                            deleteApplication(currentCandidateApp.id);
+                            deleteApplication(activeApp.id);
                             setConfirmDeleteAppId(null);
                           }}
                           className="flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700"
@@ -1177,7 +1258,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     </div>
                   ) : (
                     <button
-                      onClick={() => setConfirmDeleteAppId(currentCandidateApp.id)}
+                      onClick={() => setConfirmDeleteAppId(activeApp.id)}
                       className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl hover:bg-rose-50 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1187,7 +1268,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 </div>
               </div>
 
-              {/* Exact 5-Step Progress Bar requested:
+              {/* Exact 5-Step Progress Bar:
                   1. Pièces scannées ➔ 2. Candidature soumise ➔ 3. Évaluation Directeur ➔ 4. Validation Structure ➔ 5. Admission */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
@@ -1209,17 +1290,27 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                   <div
                     className="absolute top-7 left-8 h-1 bg-neutral-900 transition-all duration-500 -z-0"
                     style={{
-                      width: `${Math.min(
-                        100,
-                        Math.max(0, ((currentStep - 1) / (PROGRESS_STEPS.length - 1)) * 100)
-                      )}%`,
+                      width: `${
+                        currentStep === 5 &&
+                        (String(activeApp.status || '').toUpperCase() === 'CED_APPROVED' ||
+                          String(activeApp.status || '').toUpperCase() === 'ADMIS' ||
+                          String(activeApp.status || '').toUpperCase() === 'ACCEPTED')
+                          ? 100
+                          : Math.min(100, Math.max(0, ((currentStep - 1) / (PROGRESS_STEPS.length - 1)) * 100))
+                      }%`,
                     }}
                   />
 
                   <div className="grid grid-cols-5 gap-2 relative z-10">
                     {PROGRESS_STEPS.map((s) => {
-                      const isCompleted = currentStep > s.step;
-                      const isCurrent = currentStep === s.step;
+                      const isCompleted =
+                        currentStep > s.step ||
+                        (s.step === 5 &&
+                          currentStep === 5 &&
+                          (String(activeApp.status || '').toUpperCase() === 'CED_APPROVED' ||
+                            String(activeApp.status || '').toUpperCase() === 'ADMIS' ||
+                            String(activeApp.status || '').toUpperCase() === 'ACCEPTED'));
+                      const isCurrent = currentStep === s.step && !isCompleted;
 
                       return (
                         <div key={s.step} className="flex flex-col items-center text-center">
@@ -1257,8 +1348,14 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                 {/* MOBILE TIMELINE */}
                 <div className="block sm:hidden space-y-2 pt-2">
                   {PROGRESS_STEPS.map((s) => {
-                    const isCompleted = currentStep > s.step;
-                    const isCurrent = currentStep === s.step;
+                    const isCompleted =
+                      currentStep > s.step ||
+                      (s.step === 5 &&
+                        currentStep === 5 &&
+                        (String(activeApp.status || '').toUpperCase() === 'CED_APPROVED' ||
+                          String(activeApp.status || '').toUpperCase() === 'ADMIS' ||
+                          String(activeApp.status || '').toUpperCase() === 'ACCEPTED'));
+                    const isCurrent = currentStep === s.step && !isCompleted;
 
                     return (
                       <div
@@ -1311,21 +1408,21 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               </div>
 
               {/* Feedback from Supervisor */}
-              {currentCandidateApp.supervisorFeedback && (
+              {activeApp.supervisorFeedback && (
                 <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-xl space-y-1.5">
                   <div className="text-xs font-bold text-neutral-900 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>Avis du Directeur de thèse :</span>
                     </span>
-                    {currentCandidateApp.supervisorGrade && (
+                    {activeApp.supervisorGrade && (
                       <span className="font-mono text-[11px] bg-white border border-neutral-200 px-2 py-0.5 rounded-md text-neutral-800">
-                        Appréciation : {currentCandidateApp.supervisorGrade}
+                        Appréciation : {activeApp.supervisorGrade}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-neutral-700 leading-relaxed pl-5">
-                    "{currentCandidateApp.supervisorFeedback}"
+                    "{activeApp.supervisorFeedback}"
                   </p>
                 </div>
               )}
@@ -1342,26 +1439,26 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       Intitulé Thèse
                     </span>
                     <h4 className="text-xs font-bold text-neutral-900 mt-0.5">
-                      {currentCandidateApp.topicTitle}
+                      {activeApp.topicTitle}
                     </h4>
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 text-xs">
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Établissement</span>
                       <span className="font-medium text-neutral-800">
-                        {currentCandidateApp.establishment}
+                        {activeApp.establishment}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Laboratoire</span>
                       <span className="font-medium text-neutral-800">
-                        {currentCandidateApp.laboratory}
+                        {activeApp.laboratory}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 block">Directeur</span>
                       <span className="font-medium text-neutral-800">
-                        {currentCandidateApp.supervisorName}
+                        {activeApp.supervisorName}
                       </span>
                     </div>
                     <div>
@@ -1387,20 +1484,20 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     <tbody>
                       <tr>
                         <td className="py-3 px-3.5 font-bold text-neutral-900 max-w-xs">
-                          {currentCandidateApp.topicTitle}
+                          {activeApp.topicTitle}
                         </td>
                         <td className="py-3 px-3.5 text-neutral-700">
-                          {currentCandidateApp.establishment} · {currentCandidateApp.laboratory}
+                          {activeApp.establishment} · {activeApp.laboratory}
                         </td>
                         <td className="py-3 px-3.5 font-medium text-neutral-800">
-                          {currentCandidateApp.supervisorName}
+                          {activeApp.supervisorName}
                         </td>
                         <td className="py-3 px-3.5 font-semibold text-neutral-900">
                           Étape {currentStep}/5
                         </td>
                         <td className="py-3 px-3.5">
                           <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 capitalize">
-                            {currentCandidateApp.status.replace('_', ' ')}
+                            {activeApp.status.replace('_', ' ')}
                           </span>
                         </td>
                       </tr>

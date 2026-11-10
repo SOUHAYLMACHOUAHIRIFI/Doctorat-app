@@ -26,7 +26,7 @@ interface ApplyModalProps {
 }
 
 export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
-  const { addApplication, currentUser, documents, uploadCandidateDocument, openAttachment, showToast } =
+  const { addApplication, currentUser, documents, applications, uploadCandidateDocument, openAttachment, showToast } =
     useApp();
 
   const initialFirstName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || '';
@@ -53,6 +53,14 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   const [scanningTitle, setScanningTitle] = useState<string>('');
 
   if (!topic) return null;
+
+  // Active candidatures for current user
+  const userApplications = applications.filter(
+    (a) =>
+      (a.candidateEmail && a.candidateEmail.toLowerCase() === (email.trim().toLowerCase() || currentUser?.email.toLowerCase())) ||
+      (currentUser && a.candidateId === currentUser.id)
+  );
+  const hasReachedMaxApplications = userApplications.length >= 3;
 
   // Retrieve current candidate documents
   const candidateDocs = documents.filter(
@@ -97,6 +105,11 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (hasReachedMaxApplications) {
+      setErrorMsg('Vous avez atteint la limite maximale de 3 candidatures autorisées par le règlement doctoral.');
+      return;
+    }
 
     if (!nom.trim() || !prenom.trim() || !email.trim() || !phone.trim() || !cin.trim()) {
       setErrorMsg(
@@ -189,6 +202,15 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                 <span className="text-neutral-800 font-medium">Encadrant : {topic.supervisorName}</span>
               </div>
             </div>
+
+            {hasReachedMaxApplications && (
+              <div className="p-3.5 text-xs bg-amber-50 text-amber-900 border border-amber-300 rounded-xl font-medium leading-relaxed flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  Vous avez atteint la limite maximale de 3 candidatures autorisées par le règlement doctoral de l'USMBA. Vous ne pouvez plus déposer de nouvelle candidature sans retirer un dossier existant.
+                </span>
+              </div>
+            )}
 
             {errorMsg && (
               <div className="p-3.5 text-xs bg-rose-50 text-rose-800 border border-rose-200 rounded-xl font-medium leading-relaxed flex items-center gap-2">
@@ -467,12 +489,14 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting || !isDossierComplet}
+                disabled={isSubmitting || !isDossierComplet || hasReachedMaxApplications}
                 className="flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-semibold text-white bg-neutral-900 rounded-xl hover:bg-neutral-800 transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Check className="w-3.5 h-3.5" />
                 <span>
-                  {isSubmitting
+                  {hasReachedMaxApplications
+                    ? 'Limite de 3 candidatures atteinte'
+                    : isSubmitting
                     ? 'Transmission en cours...'
                     : isDossierComplet
                     ? 'Valider et transmettre ma candidature'

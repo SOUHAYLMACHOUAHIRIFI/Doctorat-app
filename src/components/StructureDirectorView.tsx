@@ -470,7 +470,7 @@ export const StructureDirectorView: React.FC = () => {
                             <span>Dossier</span>
                           </button>
 
-                          {app.currentStep < 5 && app.status !== 'admis' ? (
+                          {app.currentStep < 5 && app.status !== 'admis' && app.status !== 'CED_APPROVED' && app.status !== 'ACCEPTED' ? (
                             <button
                               onClick={() => {
                                 validateApplicationStructure(

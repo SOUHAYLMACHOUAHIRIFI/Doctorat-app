@@ -71,8 +71,12 @@ export type ApplicationStatus =
   | 'EN_VERIFICATION'
   | 'A_CORRIGER'
   | 'AVIS_FAVORABLE'
+  | 'SUPERVISOR_APPROVED'
+  | 'EVALUATED'
   | 'AVIS_DEFAVORABLE'
   | 'VALIDE_STRUCTURE'
+  | 'CED_APPROVED'
+  | 'ACCEPTED'
   | 'REJETE_STRUCTURE'
   | 'ADMIS'
   | 'REFUSE';

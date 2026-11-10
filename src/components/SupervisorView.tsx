@@ -130,11 +130,19 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
         </span>
       );
     }
-    if (step === 5 || status === 'admis') {
+    if (step === 5 || status === 'admis' || status === 'CED_APPROVED' || status === 'ACCEPTED') {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span>Admis (5/5)</span>
+          <span>Admis CED (5/5)</span>
+        </span>
+      );
+    }
+    if (step === 4 || status === 'SUPERVISOR_APPROVED' || status === 'EVALUATED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+          <CheckCircle2 className="w-3 h-3 text-blue-600" />
+          <span>Avis Favorable Dir. (4/5)</span>
         </span>
       );
     }

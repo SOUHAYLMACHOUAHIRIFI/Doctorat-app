@@ -139,12 +139,15 @@ export interface ApplicationEntity {
   laboratory: string;
   supervisorId: string;
   supervisorName: string;
-  step: number; // 1 to 7
+  step: number; // 1 to 5
+  currentStep?: number; // 1 to 5 (synchronized)
   status: ApplicationStatusCode;
   notes?: string;
   motivationLetter?: string;
+  supervisorDecision?: string;
   supervisorGrade?: string;
   supervisorFeedback?: string;
+  structureDecision?: string;
   structureFeedback?: string;
   commissionNotes?: string;
   submittedAt: string;

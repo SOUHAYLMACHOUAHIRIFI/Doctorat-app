@@ -41,7 +41,7 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
         (d.candidateId && application.candidateId && d.candidateId === application.candidateId)
     );
     matchingContext.forEach((d) => {
-      if (!list.some((existing) => existing.id === d.id || existing.fileName === d.fileName)) {
+      if (!list.some((existing) => existing.id === d.id)) {
         list.push(d);
       }
     });
@@ -63,8 +63,13 @@ export const ApplicantReviewModal: React.FC<ApplicantReviewModalProps> = ({
       const target = type.toLowerCase();
       if (t === target) return true;
       if (target === 'baccalaureat' && (t === 'bac' || t.includes('bac'))) return true;
-      if (target === 'releve_notes' && (t === 'notes' || t.includes('note') || t.includes('releve'))) return true;
-      if (target === 'diplomes' && (t === 'diplome' || t.includes('diplom'))) return true;
+      if (
+        target === 'releve_notes' &&
+        (t === 'notes' || t.includes('note') || t.includes('releve') || t.includes('transcript'))
+      )
+        return true;
+      if (target === 'diplomes' && (t === 'diplome' || t.includes('diplom') || t.includes('degree')))
+        return true;
       if (target === 'cin' && t.includes('cin')) return true;
       return false;
     });

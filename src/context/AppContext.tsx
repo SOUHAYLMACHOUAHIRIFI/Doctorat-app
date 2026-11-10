@@ -97,6 +97,16 @@ export interface AppContextType {
     captureMethod?: 'camera' | 'upload',
     customTitle?: string
   ) => Promise<CandidateDocument | undefined>;
+  uploadCandidateDocuments: (
+    type: DocumentType,
+    files: Array<{
+      fileName: string;
+      fileSize?: string;
+      dataUrl?: string;
+      captureMethod?: 'camera' | 'upload';
+      customTitle?: string;
+    }>
+  ) => Promise<CandidateDocument[]>;
   deleteCandidateDocument: (docId: string) => Promise<void>;
   reviewCandidateDocument: (docId: string, status: 'VALIDE' | 'REJETE' | 'A_CORRIGER', reason?: string) => Promise<void>;
   reRegistrations: ReRegistration[];
@@ -788,6 +798,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Documents
+  const uploadCandidateDocuments = async (
+    type: DocumentType,
+    files: Array<{
+      fileName: string;
+      fileSize?: string;
+      dataUrl?: string;
+      captureMethod?: 'camera' | 'upload';
+      customTitle?: string;
+    }>
+  ): Promise<CandidateDocument[]> => {
+    if (!currentUser || files.length === 0) return [];
+
+    const titleMap: Record<DocumentType, string> = {
+      baccalaureat: 'Diplôme du Baccalauréat',
+      releve_notes: 'Relevé de Notes',
+      diplomes: 'Diplôme Universitaire',
+      cin: 'Carte d’Identité Nationale (CIN)',
+    };
+
+    const payloadFiles = files.map((f) => ({
+      fileName: f.fileName,
+      fileSize: f.fileSize || '1.8 Mo',
+      fileMimeType: f.dataUrl?.startsWith('data:image/') ? 'image/jpeg' : 'application/pdf',
+      dataUrl: f.dataUrl || 'data:application/pdf;base64,JVBERi0xLjQKJUZpbGUgY2VydGlmaWUK',
+      title: f.customTitle?.trim() || titleMap[type] || 'Document Justificatif',
+      captureMethod: f.captureMethod || 'upload',
+    }));
+
+    try {
+      const res = await api.documents.uploadMultiple({
+        typeCode: type,
+        files: payloadFiles,
+      });
+
+      if (res.success && res.documents && res.documents.length > 0) {
+        const normDocs = res.documents.map((d) => normalizeDocument(d, currentUser.email));
+        setDocuments((prev) => {
+          const newIds = new Set(normDocs.map((d) => d.id));
+          return [...normDocs, ...prev.filter((d) => !newIds.has(d.id))];
+        });
+        await refreshDocuments();
+        showToast(
+          normDocs.length === 1
+            ? `Document ajouté avec succès : ${normDocs[0].title}`
+            : `${normDocs.length} documents enregistrés avec succès pour ${titleMap[type] || type}`
+        );
+        return normDocs;
+      }
+    } catch (err: any) {
+      console.warn('API uploadMultiple fallback to local state:', err);
+    }
+
+    // Fallback local persistence so the candidate is never blocked
+    const fallbackDocs: CandidateDocument[] = files.map((f, idx) => ({
+      id: `doc-${Date.now().toString(36)}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+      candidateEmail: currentUser.email,
+      candidateId: currentUser.id,
+      type,
+      typeCode: type,
+      title: f.customTitle?.trim() || titleMap[type] || 'Document Justificatif',
+      fileName: f.fileName,
+      fileSize: f.fileSize || '1.8 Mo',
+      uploadedAt: new Date().toISOString().split('T')[0],
+      status: 'valide',
+      dataUrl: f.dataUrl,
+      captureMethod: f.captureMethod || 'upload',
+    }));
+
+    setDocuments((prev) => [...fallbackDocs, ...prev]);
+    showToast(`${fallbackDocs.length} document(s) enregistré(s) localement avec succès.`);
+    return fallbackDocs;
+  };
+
   const uploadCandidateDocument = async (
     type: DocumentType,
     fileName: string,
@@ -796,56 +879,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     captureMethod: 'camera' | 'upload' = 'upload',
     customTitle?: string
   ): Promise<CandidateDocument | undefined> => {
-    if (!currentUser) return;
-
-    const titleMap: Record<DocumentType, string> = {
-      baccalaureat: 'Diplôme du Baccalauréat',
-      releve_notes: 'Fiches et Relevés de Notes',
-      diplomes: 'Diplômes (Licence, Master / Ingénieur)',
-      cin: 'Carte d’Identité Nationale (CIN)',
-    };
-
-    const docTitle = customTitle?.trim() || titleMap[type] || 'Document Justificatif';
-
-    try {
-      const res = await api.documents.upload({
-        typeCode: type,
-        title: docTitle,
-        fileName,
-        fileSize,
-        fileMimeType: dataUrl?.startsWith('data:image/') ? 'image/jpeg' : 'application/pdf',
-        dataUrl: dataUrl || 'data:application/pdf;base64,JVBERi0xLjQKJUZpbGUgY2VydGlmaWUK',
-        captureMethod,
-      });
-
-      if (res.success && res.document) {
-        const doc = normalizeDocument(res.document, currentUser.email);
-        setDocuments((prev) => [doc, ...prev]);
-        await refreshDocuments();
-        showToast(`Document ajouté avec succès : ${doc.title} (${doc.fileName})`);
-        return doc;
-      }
-    } catch (err: any) {
-      console.warn('API upload fallback to local state:', err);
-      // Fallback local persistence so the candidate is never blocked
-      const fallbackDoc: CandidateDocument = {
-        id: `doc-${Date.now().toString(36)}`,
-        candidateEmail: currentUser.email,
-        candidateId: currentUser.id,
-        type,
-        typeCode: type,
-        title: docTitle,
-        fileName,
-        fileSize,
-        uploadedAt: new Date().toISOString().split('T')[0],
-        status: 'valide',
-        dataUrl,
-        captureMethod: 'upload',
-      };
-      setDocuments((prev) => [fallbackDoc, ...prev]);
-      showToast(`Document enregistré avec succès : ${fallbackDoc.title} (${fallbackDoc.fileName})`);
-      return fallbackDoc;
-    }
+    const res = await uploadCandidateDocuments(type, [
+      { fileName, fileSize, dataUrl, captureMethod, customTitle },
+    ]);
+    return res[0];
   };
 
   const deleteCandidateDocument = async (docId: string) => {
@@ -990,6 +1027,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         documents,
         refreshDocuments,
         uploadCandidateDocument,
+        uploadCandidateDocuments,
         deleteCandidateDocument,
         reviewCandidateDocument,
 

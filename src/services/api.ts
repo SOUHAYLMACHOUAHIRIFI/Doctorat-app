@@ -163,7 +163,25 @@ export const api = {
       dataUrl: string;
       captureMethod?: 'camera' | 'upload';
     }) {
-      return request<{ success: boolean; document: any; message: string }>('/documents/upload', {
+      return request<{ success: boolean; document: any; documents?: any[]; message: string }>('/documents/upload', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    async uploadMultiple(payload: {
+      typeCode: string;
+      title?: string;
+      files: Array<{
+        fileName: string;
+        fileSize?: string;
+        fileMimeType?: string;
+        dataUrl: string;
+        title?: string;
+        captureMethod?: 'camera' | 'upload';
+      }>;
+    }) {
+      return request<{ success: boolean; count: number; documents: any[]; document?: any; message: string }>('/documents/upload-multiple', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

@@ -261,7 +261,7 @@ model DocumentType {
   documents   ApplicationDocument[]
 }
 
-// 11. Application Documents
+// 11. Application Documents (Relation 1-à-Plusieurs: plusieurs fichiers par catégorie autorisés)
 model ApplicationDocument {
   id             String           @id @default(uuid())
   candidateId    String
@@ -270,6 +270,7 @@ model ApplicationDocument {
   application    Application?     @relation(fields: [applicationId], references: [id])
   typeId         String
   documentType   DocumentType     @relation(fields: [typeId], references: [id])
+  title          String?          // Intitulé précis (ex: Relevé S1-S2, Master, etc.)
   fileName       String
   fileSize       String
   fileMimeType   String
@@ -284,6 +285,7 @@ model ApplicationDocument {
 
   @@index([candidateId])
   @@index([status])
+  @@index([typeId])
 }
 
 // 12. Document Reviews (Validation / Rejet / Demande de correction)

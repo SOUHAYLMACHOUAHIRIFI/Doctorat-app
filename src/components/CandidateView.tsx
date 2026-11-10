@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { ThesisTopic, DocumentType, ApplicationStep, User, CandidateDocument } from '../types';
 import {
@@ -33,6 +33,15 @@ interface CandidateViewProps {
   onOpenReReg: () => void;
 }
 
+export interface PendingCategoryFile {
+  file: File;
+  fileName: string;
+  fileSize: string;
+  dataUrl: string;
+  isPdf: boolean;
+  customTitle: string;
+}
+
 export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpenReReg }) => {
   const {
     topics,
@@ -44,6 +53,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     deleteApplication,
     documents,
     uploadCandidateDocument,
+    uploadCandidateDocuments,
     deleteCandidateDocument,
     updateUserProfile,
     openAttachment,
@@ -268,6 +278,98 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     }
   };
 
+  // Local pending multi-file uploads per document category
+  const [pendingUploads, setPendingUploads] = useState<Record<DocumentType, PendingCategoryFile[]>>({
+    baccalaureat: [],
+    releve_notes: [],
+    diplomes: [],
+    cin: [],
+  });
+  const [isSavingCategory, setIsSavingCategory] = useState<Record<DocumentType, boolean>>({
+    baccalaureat: false,
+    releve_notes: false,
+    diplomes: false,
+    cin: false,
+  });
+
+  const fileInputRefs: Record<DocumentType, React.RefObject<HTMLInputElement | null>> = {
+    baccalaureat: useRef<HTMLInputElement | null>(null),
+    releve_notes: useRef<HTMLInputElement | null>(null),
+    diplomes: useRef<HTMLInputElement | null>(null),
+    cin: useRef<HTMLInputElement | null>(null),
+  };
+
+  const handleFilesSelectForCategory = (type: DocumentType, e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const filesArray = Array.from(fileList);
+
+    filesArray.forEach((file) => {
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const sizeInMb = file.size / (1024 * 1024);
+      const sizeStr = sizeInMb < 0.1 ? `${Math.round(file.size / 1024)} Ko` : `${sizeInMb.toFixed(2)} Mo`;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setPendingUploads((prev) => ({
+            ...prev,
+            [type]: [
+              ...(prev[type] || []),
+              {
+                file,
+                fileName: file.name,
+                fileSize: sizeStr,
+                dataUrl: (event.target?.result as string) || '',
+                isPdf,
+                customTitle: file.name.replace(/\.[^/.]+$/, ''),
+              },
+            ],
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const removePendingCategoryFile = (type: DocumentType, index: number) => {
+    setPendingUploads((prev) => ({
+      ...prev,
+      [type]: prev[type].filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const updatePendingCategoryTitle = (type: DocumentType, index: number, title: string) => {
+    setPendingUploads((prev) => ({
+      ...prev,
+      [type]: prev[type].map((item, idx) => (idx === index ? { ...item, customTitle: title } : item)),
+    }));
+  };
+
+  const handleSaveCategoryPendingUploads = async (type: DocumentType) => {
+    const list = pendingUploads[type];
+    if (!list || list.length === 0) return;
+
+    setIsSavingCategory((prev) => ({ ...prev, [type]: true }));
+    try {
+      await uploadCandidateDocuments(
+        type,
+        list.map((item) => ({
+          fileName: item.fileName,
+          fileSize: item.fileSize,
+          dataUrl: item.dataUrl,
+          customTitle: item.customTitle,
+          captureMethod: 'upload',
+        }))
+      );
+      setPendingUploads((prev) => ({ ...prev, [type]: [] }));
+    } finally {
+      setIsSavingCategory((prev) => ({ ...prev, [type]: false }));
+    }
+  };
+
   const openUploadModal = (type: DocumentType, title: string) => {
     setScanningDocType(type);
     setScanningDocTitle(title);
@@ -282,6 +384,20 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
     customTitle?: string
   ) => {
     await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method, customTitle);
+    setScanningDocType(null);
+  };
+
+  const handleSaveUploadedDocuments = async (
+    type: DocumentType,
+    files: Array<{
+      fileName: string;
+      fileSize: string;
+      dataUrl: string;
+      method: 'upload';
+      customTitle?: string;
+    }>
+  ) => {
+    await uploadCandidateDocuments(type, files);
     setScanningDocType(null);
   };
 
@@ -736,6 +852,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               {REQUIRED_DOCS.map((req) => {
                 const typeDocs = docsGroupedByType[req.type] || [];
                 const hasDocs = typeDocs.length > 0;
+                const pendingList = pendingUploads[req.type] || [];
+                const isSavingThis = isSavingCategory[req.type] || false;
                 const IconComp = req.icon;
 
                 return (
@@ -744,10 +862,22 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                     className={`p-5 rounded-2xl border bg-white flex flex-col justify-between transition-all shadow-xs ${
                       hasDocs
                         ? 'border-neutral-200 hover:border-neutral-300'
+                        : pendingList.length > 0
+                        ? 'border-neutral-900 ring-1 ring-neutral-900/10'
                         : 'border-dashed border-neutral-300 hover:border-neutral-900'
                     }`}
                   >
                     <div className="space-y-3">
+                      {/* Hidden multi-file input for this category */}
+                      <input
+                        ref={fileInputRefs[req.type]}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf"
+                        className="sr-only"
+                        onChange={(e) => handleFilesSelectForCategory(req.type, e)}
+                      />
+
                       {/* Document Card Header */}
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -771,7 +901,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         {hasDocs ? (
                           <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shrink-0">
                             <Check className="w-3 h-3" />
-                            <span>{typeDocs.length} fichier{typeDocs.length > 1 ? 's' : ''}</span>
+                            <span>{typeDocs.length} fichier{typeDocs.length > 1 ? 's' : ''} enregistré{typeDocs.length > 1 ? 's' : ''}</span>
                           </span>
                         ) : (
                           <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
@@ -780,7 +910,99 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                         )}
                       </div>
 
-                      {/* Multiple Documents List */}
+                      {/* Pending files awaiting save */}
+                      {pendingList.length > 0 && (
+                        <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2.5 animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between text-xs font-bold text-amber-950">
+                            <span className="flex items-center gap-1.5">
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Fichiers sélectionnés ({pendingList.length})</span>
+                            </span>
+                            <span className="text-[10px] font-normal text-amber-800">
+                              À enregistrer
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                            {pendingList.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2 bg-white border border-amber-200 rounded-lg space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    {item.dataUrl.startsWith('data:image/') ? (
+                                      <img
+                                        src={item.dataUrl}
+                                        alt={item.fileName}
+                                        className="w-7 h-7 object-cover rounded border border-neutral-300 shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-7 h-7 rounded bg-neutral-900 text-white flex items-center justify-center font-bold text-[9px] shrink-0">
+                                        PDF
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <span className="font-mono text-xs font-semibold text-neutral-900 block truncate max-w-[150px] sm:max-w-[200px]">
+                                        {item.fileName}
+                                      </span>
+                                      <span className="text-[10px] text-neutral-500 font-mono">
+                                        {item.fileSize}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removePendingCategoryFile(req.type, idx)}
+                                    className="p-1 text-neutral-400 hover:text-rose-600 rounded transition-colors"
+                                    title="Retirer de la sélection"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+
+                                <input
+                                  type="text"
+                                  value={item.customTitle}
+                                  onChange={(e) =>
+                                    updatePendingCategoryTitle(req.type, idx, e.target.value)
+                                  }
+                                  placeholder="Intitulé (ex: Relevé S1-S2, Diplôme Master...)"
+                                  className="w-full px-2 py-1 text-[11px] bg-neutral-50 border border-neutral-200 rounded text-neutral-800 placeholder:text-neutral-400 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/60">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPendingUploads((prev) => ({ ...prev, [req.type]: [] }))
+                              }
+                              className="px-2.5 py-1 text-[11px] font-medium text-neutral-600 hover:text-neutral-900"
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSavingThis}
+                              onClick={() => handleSaveCategoryPendingUploads(req.type)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-xs disabled:opacity-50"
+                            >
+                              <Save className="w-3 h-3" />
+                              <span>
+                                {isSavingThis
+                                  ? 'Enregistrement...'
+                                  : `Enregistrer ces ${pendingList.length} fichier${pendingList.length > 1 ? 's' : ''}`}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Multiple Documents List already saved */}
                       {hasDocs && (
                         <div className="space-y-2 pt-1">
                           {typeDocs.map((doc, docIdx) => (
@@ -825,6 +1047,8 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                                     <span className="font-mono truncate">{doc.fileName}</span>
                                     <span>·</span>
                                     <span>{doc.uploadedAt}</span>
+                                    <span>·</span>
+                                    <span className="text-emerald-700 font-semibold">Enregistré</span>
                                   </div>
                                 </div>
                               </div>
@@ -863,28 +1087,34 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
                       )}
                     </div>
 
-                    {/* Trigger File Upload Modal (Add another or initial upload) */}
-                    <div className="pt-3">
+                    {/* Trigger File Upload (Multi-file direct picker + scanner modal option) */}
+                    <div className="pt-3 flex flex-col sm:flex-row items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => openUploadModal(req.type, req.label)}
-                        className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all shadow-xs ${
+                        onClick={() => fileInputRefs[req.type].current?.click()}
+                        className={`flex-1 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-semibold transition-all shadow-xs ${
                           hasDocs
-                            ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 border border-neutral-200'
+                            ? 'bg-neutral-900 text-white hover:bg-neutral-800'
                             : 'bg-neutral-900 text-white hover:bg-neutral-800'
                         }`}
                       >
-                        {hasDocs ? (
-                          <>
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Ajouter un document ({req.label})</span>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>Téléverser cette pièce (PDF / Image)</span>
-                          </>
-                        )}
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>
+                          {hasDocs
+                            ? `Ajouter d'autres fichiers (${req.label})`
+                            : `Sélectionner des fichiers (${req.label})`}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openUploadModal(req.type, req.label)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-neutral-200 transition-colors"
+                        title="Outil de scan / Dépôt avancé"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-neutral-600" />
+                        <span className="hidden sm:inline">Dépôt avancé</span>
+                        <span className="sm:hidden">Dépôt avancé / Scanner</span>
                       </button>
                     </div>
                   </div>
@@ -1635,6 +1865,7 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
         docTitle={scanningDocTitle}
         onClose={() => setScanningDocType(null)}
         onSave={handleSaveUploadedDocument}
+        onSaveMultiple={handleSaveUploadedDocuments}
       />
     </div>
   );

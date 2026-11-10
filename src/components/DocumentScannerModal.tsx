@@ -25,14 +25,24 @@ interface DocumentScannerModalProps {
   docType: DocumentType | null;
   docTitle: string;
   onClose: () => void;
-  onSave: (
+  onSave?: (
     type: DocumentType,
     fileName: string,
     fileSize: string,
     dataUrl: string,
     method: 'upload',
     customTitle?: string
-  ) => void;
+  ) => Promise<any> | void;
+  onSaveMultiple?: (
+    type: DocumentType,
+    files: Array<{
+      fileName: string;
+      fileSize: string;
+      dataUrl: string;
+      method: 'upload';
+      customTitle?: string;
+    }>
+  ) => Promise<any> | void;
 }
 
 export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
@@ -41,6 +51,7 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
   docTitle,
   onClose,
   onSave,
+  onSaveMultiple,
 }) => {
   const [pendingFiles, setPendingFiles] = useState<PendingDocumentUpload[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -121,15 +132,28 @@ export const DocumentScannerModal: React.FC<DocumentScannerModalProps> = ({
 
     setIsProcessing(true);
     try {
-      for (const item of pendingFiles) {
-        await onSave(
+      if (onSaveMultiple) {
+        await onSaveMultiple(
           docType,
-          item.fileName,
-          item.fileSize,
-          item.dataUrl,
-          'upload',
-          item.customTitle || docTitle
+          pendingFiles.map((item) => ({
+            fileName: item.fileName,
+            fileSize: item.fileSize,
+            dataUrl: item.dataUrl,
+            method: 'upload',
+            customTitle: item.customTitle || docTitle,
+          }))
         );
+      } else if (onSave) {
+        for (const item of pendingFiles) {
+          await onSave(
+            docType,
+            item.fileName,
+            item.fileSize,
+            item.dataUrl,
+            'upload',
+            item.customTitle || docTitle
+          );
+        }
       }
       handleClose();
     } catch (err: any) {

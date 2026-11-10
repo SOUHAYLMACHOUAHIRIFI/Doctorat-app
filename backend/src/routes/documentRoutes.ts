@@ -9,12 +9,20 @@ const router = Router();
 // Candidate: get own documents
 router.get('/my', requireAuth, documentController.getMyDocuments);
 
-// Candidate: upload document
+// Candidate: upload document (single or multiple)
 router.post(
   '/upload',
   requireAuth,
   requireRoles(ROLES.CANDIDATE, ROLES.DOCTORANT),
   documentController.uploadDocument
+);
+
+// Candidate: upload multiple documents batch
+router.post(
+  '/upload-multiple',
+  requireAuth,
+  requireRoles(ROLES.CANDIDATE, ROLES.DOCTORANT),
+  documentController.uploadMultiple
 );
 
 // Evaluator: view candidate documents

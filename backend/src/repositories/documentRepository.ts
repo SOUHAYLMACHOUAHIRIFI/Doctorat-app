@@ -20,19 +20,32 @@ export const documentRepository = {
   },
 
   create(doc: ApplicationDocumentEntity): ApplicationDocumentEntity {
-    // Remove existing document of the same type for this candidate (replace)
     const docs = db.get('documents');
-    const existingIndex = docs.findIndex(
-      (d) => d.candidateId === doc.candidateId && d.typeCode === doc.typeCode
-    );
+    // Only replace if updating the exact same document ID
+    const existingIndex = docs.findIndex((d) => d.id === doc.id);
 
     if (existingIndex !== -1) {
-      docs.splice(existingIndex, 1);
+      docs[existingIndex] = doc;
+    } else {
+      docs.unshift(doc);
     }
 
-    docs.unshift(doc);
     db.save();
     return doc;
+  },
+
+  createMany(newDocs: ApplicationDocumentEntity[]): ApplicationDocumentEntity[] {
+    const docs = db.get('documents');
+    for (const doc of newDocs) {
+      const existingIndex = docs.findIndex((d) => d.id === doc.id);
+      if (existingIndex !== -1) {
+        docs[existingIndex] = doc;
+      } else {
+        docs.unshift(doc);
+      }
+    }
+    db.save();
+    return newDocs;
   },
 
   update(id: string, updates: Partial<ApplicationDocumentEntity>): ApplicationDocumentEntity | undefined {

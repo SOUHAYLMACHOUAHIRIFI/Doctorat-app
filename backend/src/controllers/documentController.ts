@@ -49,16 +49,67 @@ export const documentController = {
       }
 
       const validated = uploadDocumentSchema.parse(req.body);
-      const doc = documentService.uploadDocument(req.user, validated);
 
+      // 1. Array of documents
+      if (Array.isArray(validated)) {
+        const createdDocs = documentService.uploadDocuments(req.user, validated);
+        res.status(201).json({
+          success: true,
+          count: createdDocs.length,
+          message: `${createdDocs.length} pièce(s) justificative(s) téléversée(s) avec succès.`,
+          documents: createdDocs,
+          document: createdDocs[0],
+        });
+        return;
+      }
+
+      // 2. Batch under category: { typeCode, files: [...] }
+      if ('files' in validated && Array.isArray((validated as any).files)) {
+        const items = (validated as any).files.map((f: any) => ({
+          ...f,
+          typeCode: (validated as any).typeCode,
+          title: f.title || (validated as any).title,
+        }));
+        const createdDocs = documentService.uploadDocuments(req.user, items);
+        res.status(201).json({
+          success: true,
+          count: createdDocs.length,
+          message: `${createdDocs.length} pièce(s) justificative(s) téléversée(s) avec succès pour la catégorie ${(validated as any).typeCode}.`,
+          documents: createdDocs,
+          document: createdDocs[0],
+        });
+        return;
+      }
+
+      // 3. Batch with documents wrapper: { documents: [...] }
+      if ('documents' in validated && Array.isArray((validated as any).documents)) {
+        const createdDocs = documentService.uploadDocuments(req.user, (validated as any).documents);
+        res.status(201).json({
+          success: true,
+          count: createdDocs.length,
+          message: `${createdDocs.length} pièce(s) justificative(s) téléversée(s) avec succès.`,
+          documents: createdDocs,
+          document: createdDocs[0],
+        });
+        return;
+      }
+
+      // 4. Single document
+      const doc = documentService.uploadDocument(req.user, validated as any);
       res.status(201).json({
         success: true,
+        count: 1,
         message: `Pièce justificative téléversée avec succès (${doc.title}). Statut : DÉPOSÉ`,
         document: doc,
+        documents: [doc],
       });
     } catch (err) {
       next(err);
     }
+  },
+
+  uploadMultiple(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+    documentController.uploadDocument(req, res, next);
   },
 
   reviewDocument(req: AuthenticatedRequest, res: Response, next: NextFunction): void {

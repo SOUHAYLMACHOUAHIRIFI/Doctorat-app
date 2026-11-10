@@ -56,12 +56,27 @@ export const documentService = {
       typeCode: string;
       title?: string;
       fileName: string;
-      fileSize: string;
-      fileMimeType: string;
+      fileSize?: string;
+      fileMimeType?: string;
       dataUrl: string;
       captureMethod?: string;
     }
   ): ApplicationDocumentEntity {
+    return this.uploadDocuments(user, [data])[0];
+  },
+
+  uploadDocuments(
+    user: SafeUser,
+    dataItems: Array<{
+      typeCode: string;
+      title?: string;
+      fileName: string;
+      fileSize?: string;
+      fileMimeType?: string;
+      dataUrl: string;
+      captureMethod?: string;
+    }>
+  ): ApplicationDocumentEntity[] {
     const candidates = db.get('candidates');
     let cand = candidates.find((c) => c.userId === user.id);
 
@@ -78,44 +93,66 @@ export const documentService = {
       db.save();
     }
 
+    const typeNormalizeMap: Record<string, string> = {
+      bac: 'baccalaureat',
+      baccalaureat: 'baccalaureat',
+      notes: 'releve_notes',
+      releve_notes: 'releve_notes',
+      releves: 'releve_notes',
+      releves_notes: 'releve_notes',
+      transcript: 'releve_notes',
+      transcripts: 'releve_notes',
+      diplome: 'diplomes',
+      diplomes: 'diplomes',
+      diploma: 'diplomes',
+      diplomas: 'diplomes',
+      cin: 'cin',
+    };
+
     const titles: Record<string, string> = {
       baccalaureat: 'Diplôme du Baccalauréat',
-      releve_notes: 'Fiches et Relevés de Notes (Licence & Master)',
-      diplomes: 'Diplômes (Licence / Master / Ingénieur)',
+      releve_notes: 'Relevé de Notes (Licence & Master)',
+      diplomes: 'Diplôme (Licence / Master / Ingénieur)',
       cin: 'Carte d’Identité Nationale (CIN)',
     };
 
     const now = new Date().toISOString().split('T')[0];
+    const createdDocs: ApplicationDocumentEntity[] = [];
 
-    const newDoc: ApplicationDocumentEntity = {
-      id: `doc-${Date.now().toString(36)}`,
-      candidateId: cand.id,
-      candidateEmail: user.email,
-      typeCode: data.typeCode,
-      title: data.title?.trim() || titles[data.typeCode] || 'Document Justificatif',
-      fileName: data.fileName,
-      fileSize: data.fileSize || '1.8 Mo',
-      fileMimeType: data.fileMimeType || 'application/pdf',
-      dataUrl: data.dataUrl,
-      status: DOCUMENT_STATUS.DEPOSE,
-      captureMethod: (data.captureMethod as any) || 'upload',
-      uploadedAt: now,
-      updatedAt: now,
-    };
+    for (const item of dataItems) {
+      const normalizedType = typeNormalizeMap[item.typeCode.trim().toLowerCase()] || item.typeCode;
+      const uniqueSuffix = Math.random().toString(36).slice(2, 8);
+      const newDoc: ApplicationDocumentEntity = {
+        id: `doc-${Date.now().toString(36)}-${uniqueSuffix}`,
+        candidateId: cand.id,
+        candidateEmail: user.email,
+        typeCode: normalizedType,
+        title: item.title?.trim() || titles[normalizedType] || 'Document Justificatif',
+        fileName: item.fileName,
+        fileSize: item.fileSize || '1.8 Mo',
+        fileMimeType: item.fileMimeType || (item.dataUrl?.startsWith('data:image/') ? 'image/jpeg' : 'application/pdf'),
+        dataUrl: item.dataUrl,
+        status: DOCUMENT_STATUS.DEPOSE,
+        captureMethod: (item.captureMethod as any) || 'upload',
+        uploadedAt: now,
+        updatedAt: now,
+      };
 
-    documentRepository.create(newDoc);
+      documentRepository.create(newDoc);
+      createdDocs.push(newDoc);
 
-    auditService.log(
-      user.email,
-      user.role,
-      'UPLOAD_DOCUMENT',
-      'ApplicationDocument',
-      newDoc.id,
-      { typeCode: data.typeCode, fileName: data.fileName, captureMethod: data.captureMethod },
-      user.id
-    );
+      auditService.log(
+        user.email,
+        user.role,
+        'UPLOAD_DOCUMENT',
+        'ApplicationDocument',
+        newDoc.id,
+        { typeCode: normalizedType, fileName: item.fileName, captureMethod: item.captureMethod },
+        user.id
+      );
+    }
 
-    return newDoc;
+    return createdDocs;
   },
 
   reviewDocument(

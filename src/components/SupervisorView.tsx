@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Edit2, Check, X, FileText, UserCheck, Shield, ChevronRight, Eye, AlertCircle, Building2, User, Phone, Mail, Award, CheckCircle2, RefreshCw } from 'lucide-react';
-import { ThesisTopic, CandidateApplication, ApplicationStep, ApplicationStatus, ReRegistration } from '../types';
+import { ThesisTopic, CandidateApplication, CandidateDocument, ApplicationStep, ApplicationStatus, ReRegistration } from '../types';
 import { EditTopicModal } from './EditTopicModal';
 import { ApplicantReviewModal } from './ApplicantReviewModal';
 import { AnnualReportModal } from './AnnualReportModal';
@@ -50,12 +50,40 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
   const myTopicIds = new Set(myTopics.map((t) => t.id));
 
   const getCandidateDocsForApp = (app: CandidateApplication) => {
-    if (app.documents && app.documents.length > 0) {
-      return app.documents;
+    const list: CandidateDocument[] = [];
+    if (app.documents && Array.isArray(app.documents)) {
+      list.push(...app.documents);
     }
-    return documents.filter(
-      (d) => (d.candidateEmail || '').toLowerCase() === app.candidateEmail.toLowerCase()
+    const matchingContext = documents.filter(
+      (d) =>
+        (d.candidateEmail && d.candidateEmail.toLowerCase() === app.candidateEmail.toLowerCase()) ||
+        (d.candidateId && app.candidateId && d.candidateId === app.candidateId)
     );
+    matchingContext.forEach((d) => {
+      if (!list.some((existing) => existing.id === d.id)) {
+        list.push(d);
+      }
+    });
+    return list;
+  };
+
+  const checkDocsCompleteness = (candidateDocs: CandidateDocument[]) => {
+    const categories = ['baccalaureat', 'releve_notes', 'diplomes', 'cin'];
+    const matchedCategories = categories.filter((cat) =>
+      candidateDocs.some((d) => {
+        const t = (d.type || d.typeCode || '').toLowerCase();
+        if (cat === 'baccalaureat') return t.includes('bac');
+        if (cat === 'releve_notes') return t.includes('note') || t.includes('releve') || t.includes('transcript');
+        if (cat === 'diplomes') return t.includes('diplom') || t.includes('degree');
+        if (cat === 'cin') return t.includes('cin');
+        return false;
+      })
+    );
+    return {
+      isComplete: matchedCategories.length >= 4,
+      categoriesCount: matchedCategories.length,
+      totalFiles: candidateDocs.length,
+    };
   };
 
   const myApplications = applications.filter((a) => {
@@ -422,7 +450,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
               <div className="block sm:hidden space-y-3">
                 {myApplications.map((app) => {
                   const candidateDocs = getCandidateDocsForApp(app);
-                  const isDocsComplete = candidateDocs.length >= 4;
+                  const docStats = checkDocsCompleteness(candidateDocs);
 
                   return (
                     <div
@@ -454,13 +482,15 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
 
                       {/* Documents counter and pedagogical feedback */}
                       <div className="flex items-center justify-between text-xs text-neutral-600">
-                        <span className={`flex items-center gap-1 font-semibold ${isDocsComplete ? 'text-emerald-700' : 'text-neutral-700'}`}>
-                          {isDocsComplete ? (
+                        <span className={`flex items-center gap-1 font-semibold ${docStats.isComplete ? 'text-emerald-700' : 'text-neutral-700'}`}>
+                          {docStats.isComplete ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           ) : (
                             <FileText className="w-3.5 h-3.5 text-neutral-500" />
                           )}
-                          <span>{candidateDocs.length} / 4 pièces {isDocsComplete ? 'complètes (conforme)' : 'numérisées'}</span>
+                          <span>
+                            {docStats.totalFiles} fichier{docStats.totalFiles > 1 ? 's' : ''} ({docStats.categoriesCount}/4 pièces{docStats.isComplete ? ' complètes' : ''})
+                          </span>
                         </span>
                         <span className="text-[11px] text-neutral-400">
                           {app.submittedDate}
@@ -501,7 +531,7 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
                   <tbody className="divide-y divide-neutral-100">
                     {myApplications.map((app) => {
                       const candidateDocs = getCandidateDocsForApp(app);
-                      const isDocsComplete = candidateDocs.length >= 4;
+                      const docStats = checkDocsCompleteness(candidateDocs);
 
                       return (
                         <tr key={app.id} className="hover:bg-neutral-50/60 transition-colors">
@@ -526,17 +556,17 @@ export const SupervisorView: React.FC<SupervisorViewProps> = ({ onOpenAddTopic }
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={`font-bold px-2.5 py-1 rounded-md text-[11px] flex items-center gap-1.5 border ${
-                                  isDocsComplete
+                                  docStats.isComplete
                                     ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                     : 'bg-neutral-100 text-neutral-800 border-neutral-200'
                                 }`}
                               >
-                                {isDocsComplete ? (
+                                {docStats.isComplete ? (
                                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 ) : (
                                   <FileText className="w-3.5 h-3.5 text-neutral-500" />
                                 )}
-                                <span>{candidateDocs.length} / 4 pièces {isDocsComplete ? 'complètes' : ''}</span>
+                                <span>{docStats.totalFiles} fichier{docStats.totalFiles > 1 ? 's' : ''} ({docStats.categoriesCount}/4 {docStats.isComplete ? 'complètes' : 'pièces'})</span>
                               </span>
                               {candidateDocs.some((d) => d.captureMethod === 'camera') && (
                                 <span className="text-[10px] font-semibold text-neutral-600 bg-neutral-50 px-1.5 py-0.5 rounded-md border border-neutral-200">

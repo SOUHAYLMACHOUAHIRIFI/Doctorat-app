@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ThesisTopic, DocumentType, CandidateDocument } from '../types';
 import { useApp } from '../context/AppContext';
 import {
@@ -18,6 +18,8 @@ import {
   Eye,
   ShieldCheck,
   Plus,
+  Trash2,
+  Save,
 } from 'lucide-react';
 import { DocumentScannerModal } from './DocumentScannerModal';
 
@@ -26,9 +28,26 @@ interface ApplyModalProps {
   onClose: () => void;
 }
 
+interface PendingApplyFile {
+  file: File;
+  fileName: string;
+  fileSize: string;
+  dataUrl: string;
+  isPdf: boolean;
+  customTitle: string;
+}
+
 export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
-  const { addApplication, currentUser, documents, applications, uploadCandidateDocument, openAttachment, showToast } =
-    useApp();
+  const {
+    addApplication,
+    currentUser,
+    documents,
+    applications,
+    uploadCandidateDocument,
+    uploadCandidateDocuments,
+    openAttachment,
+    showToast,
+  } = useApp();
 
   const initialFirstName = currentUser?.firstName || currentUser?.name?.split(' ')[0] || '';
   const initialLastName =
@@ -53,22 +72,118 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
   const [scanningType, setScanningType] = useState<DocumentType | null>(null);
   const [scanningTitle, setScanningTitle] = useState<string>('');
 
+  // Local pending multi-file uploads per category in the apply modal
+  const [pendingFiles, setPendingFiles] = useState<Record<DocumentType, PendingApplyFile[]>>({
+    baccalaureat: [],
+    releve_notes: [],
+    diplomes: [],
+    cin: [],
+  });
+
+  const [isSavingCategory, setIsSavingCategory] = useState<Record<DocumentType, boolean>>({
+    baccalaureat: false,
+    releve_notes: false,
+    diplomes: false,
+    cin: false,
+  });
+
+  const fileInputRefs: Record<DocumentType, React.RefObject<HTMLInputElement | null>> = {
+    baccalaureat: useRef<HTMLInputElement | null>(null),
+    releve_notes: useRef<HTMLInputElement | null>(null),
+    diplomes: useRef<HTMLInputElement | null>(null),
+    cin: useRef<HTMLInputElement | null>(null),
+  };
+
+  const handleCategoryFilesSelect = (type: DocumentType, e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const filesArray = Array.from(fileList);
+
+    filesArray.forEach((file) => {
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const sizeInMb = file.size / (1024 * 1024);
+      const sizeStr = sizeInMb < 0.1 ? `${Math.round(file.size / 1024)} Ko` : `${sizeInMb.toFixed(2)} Mo`;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setPendingFiles((prev) => ({
+            ...prev,
+            [type]: [
+              ...(prev[type] || []),
+              {
+                file,
+                fileName: file.name,
+                fileSize: sizeStr,
+                dataUrl: (event.target?.result as string) || '',
+                isPdf,
+                customTitle: file.name.replace(/\.[^/.]+$/, ''),
+              },
+            ],
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const removePendingFile = (type: DocumentType, index: number) => {
+    setPendingFiles((prev) => ({
+      ...prev,
+      [type]: prev[type].filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const updatePendingTitle = (type: DocumentType, index: number, title: string) => {
+    setPendingFiles((prev) => ({
+      ...prev,
+      [type]: prev[type].map((item, idx) => (idx === index ? { ...item, customTitle: title } : item)),
+    }));
+  };
+
+  const handleSavePendingCategory = async (type: DocumentType) => {
+    const list = pendingFiles[type];
+    if (!list || list.length === 0) return;
+
+    setIsSavingCategory((prev) => ({ ...prev, [type]: true }));
+    try {
+      await uploadCandidateDocuments(
+        type,
+        list.map((item) => ({
+          fileName: item.fileName,
+          fileSize: item.fileSize,
+          dataUrl: item.dataUrl,
+          customTitle: item.customTitle,
+          captureMethod: 'upload',
+        }))
+      );
+      setPendingFiles((prev) => ({ ...prev, [type]: [] }));
+    } finally {
+      setIsSavingCategory((prev) => ({ ...prev, [type]: false }));
+    }
+  };
+
   if (!topic) return null;
 
   // Active candidatures for current user
   const userApplications = applications.filter(
     (a) =>
-      (a.candidateEmail && a.candidateEmail.toLowerCase() === (email.trim().toLowerCase() || currentUser?.email.toLowerCase())) ||
+      (a.candidateEmail &&
+        a.candidateEmail.toLowerCase() ===
+          (email.trim().toLowerCase() || currentUser?.email.toLowerCase())) ||
       (currentUser && a.candidateId === currentUser.id)
   );
   const hasReachedMaxApplications = userApplications.length >= 3;
 
-  // Retrieve current candidate documents
-  const candidateDocs = documents.filter(
-    (d) =>
-      (d.candidateEmail || '').toLowerCase() ===
-      (email.trim().toLowerCase() || currentUser?.email.toLowerCase())
-  );
+  // Retrieve current candidate documents matching email or user id
+  const candidateDocs = documents.filter((d) => {
+    const userEmail = (email.trim().toLowerCase() || currentUser?.email || '').toLowerCase();
+    if (d.candidateEmail && d.candidateEmail.toLowerCase() === userEmail) return true;
+    if (currentUser && d.candidateId === currentUser.id) return true;
+    return false;
+  });
 
   const REQUIRED_DOC_TYPES: { type: DocumentType; label: string; desc: string }[] = [
     { type: 'baccalaureat', label: '1. Baccalauréat', desc: 'Diplôme certifié conforme' },
@@ -81,9 +196,20 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     { type: 'cin', label: '4. Carte d’Identité (CIN)', desc: 'Scan recto/verso net de la CIN' },
   ];
 
-  const missingDocs = REQUIRED_DOC_TYPES.filter(
-    (rd) => !candidateDocs.some((d) => d.type === rd.type)
-  );
+  const typeNormalize = (raw: string): DocumentType => {
+    const l = (raw || '').toLowerCase();
+    if (l.includes('bac')) return 'baccalaureat';
+    if (l.includes('note') || l.includes('releve')) return 'releve_notes';
+    if (l.includes('diplom')) return 'diplomes';
+    if (l.includes('cin')) return 'cin';
+    return 'baccalaureat';
+  };
+
+  const missingDocs = REQUIRED_DOC_TYPES.filter((rd) => {
+    const hasSaved = candidateDocs.some((d) => typeNormalize(d.type || d.typeCode || '') === rd.type);
+    const hasPending = (pendingFiles[rd.type] || []).length > 0;
+    return !hasSaved && !hasPending;
+  });
 
   const isDossierComplet = missingDocs.length === 0;
 
@@ -101,6 +227,20 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
     customTitle?: string
   ) => {
     await uploadCandidateDocument(type, fileName, fileSize, dataUrl, method, customTitle);
+    setScanningType(null);
+  };
+
+  const handleSaveScannedMultiple = async (
+    type: DocumentType,
+    files: Array<{
+      fileName: string;
+      fileSize: string;
+      dataUrl: string;
+      method: 'upload';
+      customTitle?: string;
+    }>
+  ) => {
+    await uploadCandidateDocuments(type, files);
     setScanningType(null);
   };
 
@@ -136,6 +276,23 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
 
     setIsSubmitting(true);
     try {
+      // First, automatically save any pending uploads that the user hasn't explicitly clicked "Enregistrer" for
+      for (const rd of REQUIRED_DOC_TYPES) {
+        const list = pendingFiles[rd.type];
+        if (list && list.length > 0) {
+          await uploadCandidateDocuments(
+            rd.type,
+            list.map((item) => ({
+              fileName: item.fileName,
+              fileSize: item.fileSize,
+              dataUrl: item.dataUrl,
+              customTitle: item.customTitle,
+              captureMethod: 'upload',
+            }))
+          );
+        }
+      }
+
       await addApplication(
         topic.id,
         statement.trim() || `Candidature formelle soumise par ${prenom} ${nom}.`,
@@ -372,14 +529,16 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                       : 'bg-amber-50 text-amber-800 border border-amber-200'
                   }`}
                 >
-                  {candidateDocs.length} / 4 fournies
+                  {candidateDocs.length} pièce(s) enregistrée(s)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {REQUIRED_DOC_TYPES.map((rd) => {
-                  const docs = candidateDocs.filter((d) => d.type === rd.type);
+                  const docs = candidateDocs.filter((d) => typeNormalize(d.type || d.typeCode || '') === rd.type);
                   const hasDocs = docs.length > 0;
+                  const pendingList = pendingFiles[rd.type] || [];
+                  const isSavingThis = isSavingCategory[rd.type] || false;
 
                   return (
                     <div
@@ -387,9 +546,21 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                       className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
                         hasDocs
                           ? 'bg-neutral-50 border-neutral-200 shadow-2xs'
+                          : pendingList.length > 0
+                          ? 'bg-amber-50/50 border-amber-300'
                           : 'bg-white border-dashed border-rose-200 hover:border-neutral-900'
                       }`}
                     >
+                      {/* Hidden multi-file input */}
+                      <input
+                        ref={fileInputRefs[rd.type]}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf"
+                        className="sr-only"
+                        onChange={(e) => handleCategoryFilesSelect(rd.type, e)}
+                      />
+
                       <div className="space-y-2.5">
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -402,6 +573,10 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                               <Check className="w-3 h-3" />
                               <span>{docs.length} fichier{docs.length > 1 ? 's' : ''} lié{docs.length > 1 ? 's' : ''}</span>
                             </span>
+                          ) : pendingList.length > 0 ? (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200 shrink-0">
+                              {pendingList.length} en attente
+                            </span>
                           ) : (
                             <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200 shrink-0">
                               Requis
@@ -409,6 +584,45 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                           )}
                         </div>
 
+                        {/* Pending files list awaiting save */}
+                        {pendingList.length > 0 && (
+                          <div className="p-2.5 bg-amber-50/90 border border-amber-200 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-amber-900">
+                              <span>Fichiers sélectionnés ({pendingList.length})</span>
+                              <button
+                                type="button"
+                                disabled={isSavingThis}
+                                onClick={() => handleSavePendingCategory(rd.type)}
+                                className="px-2 py-0.5 text-[10px] bg-neutral-900 text-white rounded font-semibold hover:bg-neutral-800 inline-flex items-center gap-1"
+                              >
+                                <Save className="w-2.5 h-2.5" />
+                                <span>{isSavingThis ? 'Enreg...' : 'Enregistrer'}</span>
+                              </button>
+                            </div>
+
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {pendingList.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between gap-1 p-1.5 bg-white rounded border border-amber-200 text-[10px]"
+                                >
+                                  <span className="font-mono truncate max-w-[140px] text-neutral-800">
+                                    {item.fileName} ({item.fileSize})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removePendingFile(rd.type, idx)}
+                                    className="text-neutral-400 hover:text-rose-600"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Already saved files */}
                         {hasDocs ? (
                           <div className="space-y-2 pt-1 border-t border-neutral-200/80">
                             {docs.map((doc, docIdx) => (
@@ -460,27 +674,31 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
                         ) : null}
                       </div>
 
-                      <div className="pt-2.5 mt-2 border-t border-neutral-200/60">
+                      <div className="pt-2.5 mt-2 border-t border-neutral-200/60 flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleOpenScanner(rd.type, rd.label)}
-                          className={`w-full py-1.5 px-2.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-2xs ${
+                          onClick={() => fileInputRefs[rd.type].current?.click()}
+                          className={`flex-1 py-1.5 px-2.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-2xs ${
                             hasDocs
                               ? 'bg-neutral-100 text-neutral-800 hover:bg-neutral-200 border border-neutral-200'
                               : 'bg-neutral-900 text-white hover:bg-neutral-800'
                           }`}
                         >
-                          {hasDocs ? (
-                            <>
-                              <Plus className="w-3 h-3" />
-                              <span>Ajouter un fichier ({rd.label})</span>
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-3 h-3" />
-                              <span>Importer ce justificatif</span>
-                            </>
-                          )}
+                          <Plus className="w-3 h-3" />
+                          <span>
+                            {hasDocs
+                              ? `Ajouter des fichiers (${rd.label})`
+                              : `Sélectionner des fichiers (${rd.label})`}
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenScanner(rd.type, rd.label)}
+                          className="py-1.5 px-2 rounded-lg text-[11px] font-medium text-neutral-600 hover:text-neutral-900 border border-neutral-200 bg-white hover:bg-neutral-50"
+                          title="Dépôt avancé / Scanner"
+                        >
+                          <Upload className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
@@ -540,6 +758,7 @@ export const ApplyModal: React.FC<ApplyModalProps> = ({ topic, onClose }) => {
         docTitle={scanningTitle}
         onClose={() => setScanningType(null)}
         onSave={handleSaveScanned}
+        onSaveMultiple={handleSaveScannedMultiple}
       />
     </>
   );

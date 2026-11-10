@@ -150,6 +150,56 @@ export const topicService = {
     return updated;
   },
 
+  signTopicStructure(
+    user: SafeUser,
+    topicId: string,
+    signatureData: {
+      signatoryName: string;
+      signatoryRole: string;
+      comments?: string;
+    }
+  ): ResearchTopicEntity {
+    const topic = topicRepository.findById(topicId);
+    if (!topic) throw new Error('Sujet non trouvé.');
+
+    const timestamp = new Date().toLocaleDateString('fr-FR');
+    const visaCode = `VISA-CED-${topic.establishment.split(' ')[0]}-${Date.now().toString(36).toUpperCase()}`;
+    const commentPart = signatureData.comments ? ` Avis motivé : "${signatureData.comments.trim()}".` : '';
+    const feedbackStr = `[SIGNATURE OFFICIELLE CERTIFIÉE] Validé et signé par ${signatureData.signatoryName} (${signatureData.signatoryRole}) le ${timestamp}. Réf : ${visaCode}.${commentPart}`;
+
+    const updated = topicRepository.update(topicId, {
+      status: 'VALIDE',
+      structureFeedback: feedbackStr,
+      updatedAt: new Date().toISOString().split('T')[0],
+    });
+
+    if (!updated) throw new Error('Erreur de signature du sujet.');
+
+    auditService.log(
+      user.email,
+      user.role,
+      'OFFICIAL_SIGN_TOPIC_STRUCTURE',
+      'ResearchTopic',
+      topicId,
+      { signatory: signatureData.signatoryName, visaCode, comments: signatureData.comments },
+      user.id
+    );
+
+    // Notify supervisor
+    const supervisor = db.get('supervisors').find((s) => s.id === topic.supervisorId);
+    if (supervisor) {
+      notificationService.notify(
+        supervisor.userId,
+        '✍️ Sujet de thèse officiellement validé et signé',
+        `Votre sujet de recherche "${topic.title}" a reçu la signature officielle et le visa de validation CED (${visaCode}). Il est désormais ouvert aux candidatures.`,
+        'SUCCESS',
+        '/supervisor'
+      );
+    }
+
+    return updated;
+  },
+
   reviewTopicStructure(
     user: SafeUser,
     topicId: string,

@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { CandidateView } from './components/CandidateView';
 import { SupervisorView } from './components/SupervisorView';
 import { StructureDirectorView } from './components/StructureDirectorView';
+import { AdminDashboard } from './components/AdminDashboard';
 import { CandidateRegisterPage } from './components/CandidateRegisterPage';
 import { LoginPage } from './components/LoginPage';
 import { LoginModal } from './components/LoginModal';
@@ -63,12 +64,15 @@ const MainLayout: React.FC = () => {
     currentUser && (currentUser.role === 'CANDIDATE' || currentUser.role === 'candidat' || currentUser.role === 'DOCTORANT');
   const isSupervisorRole =
     currentUser && (currentUser.role === 'SUPERVISOR' || currentUser.role === 'directeur_these');
-  const isAdministrationRole =
+  const isStructureDirectorRole =
     currentUser &&
-    (currentUser.role === 'STRUCTURE_DIRECTOR' ||
+    (currentUser.role === 'CED' ||
+      currentUser.role === 'STRUCTURE_DIRECTOR' ||
       currentUser.role === 'directeur_structure' ||
-      currentUser.role === 'CED_ADMIN' ||
-      currentUser.role === 'SYSTEM_ADMIN');
+      currentUser.role === 'CED_ADMIN');
+  const isAdminRole =
+    currentUser &&
+    (currentUser.role === 'ADMIN' || currentUser.role === 'SYSTEM_ADMIN');
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col font-sans selection:bg-neutral-900 selection:text-white transition-colors duration-200">
@@ -126,7 +130,7 @@ const MainLayout: React.FC = () => {
             />
           )
         ) : (
-          /* Role-based workspace when authenticated (Strict Route Isolation) */
+          /* Role-based workspace when authenticated (Strict Route & View Isolation) */
           <>
             {/* 1. Candidate / Doctoral student Workspace */}
             {isCandidateRole && (
@@ -141,9 +145,14 @@ const MainLayout: React.FC = () => {
               <SupervisorView onOpenAddTopic={() => setIsAddTopicOpen(true)} />
             )}
 
-            {/* 3. Structure Director / CED Admin / System Admin Workspace */}
-            {isAdministrationRole && (
+            {/* 3. Structure Director Workspace (CED / STRUCTURE_DIRECTOR) */}
+            {isStructureDirectorRole && (
               <StructureDirectorView />
+            )}
+
+            {/* 4. Platform Administrator Workspace (ADMIN / SYSTEM_ADMIN) */}
+            {isAdminRole && (
+              <AdminDashboard />
             )}
           </>
         )}

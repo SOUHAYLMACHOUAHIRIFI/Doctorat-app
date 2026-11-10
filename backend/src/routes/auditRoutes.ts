@@ -10,7 +10,7 @@ const router = Router();
 router.get(
   '/',
   requireAuth,
-  requireRoles(ROLES.CED_ADMIN, ROLES.SYSTEM_ADMIN),
+  requireRoles(ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CED_ADMIN, ROLES.CED),
   auditController.getLogs
 );
 

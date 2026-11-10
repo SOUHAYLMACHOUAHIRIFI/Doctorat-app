@@ -273,7 +273,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               Cliquez pour sélectionner un profil. Mot de passe académique : <strong className="text-neutral-800 font-mono">usmba2026</strong> (saisie manuelle et masquée obligatoire) :
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               {/* 1. CANDIDATE */}
               <button
                 type="button"
@@ -282,8 +282,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
                 title="Candidat Youssef El Amrani"
               >
                 <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 1</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5">Candidat</span>
-                <span className="text-[10px] text-neutral-500 truncate block font-mono">youssef.elamrani@...</span>
+                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Candidat</span>
+                <span className="text-[9px] text-neutral-500 truncate block font-mono">youssef.elamrani@...</span>
               </button>
 
               {/* 2. SUPERVISOR */}
@@ -294,20 +294,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
                 title="Directeur Pr. Karim Bennani"
               >
                 <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 2</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5">Dir. de Thèse</span>
-                <span className="text-[10px] text-neutral-500 truncate block font-mono">karim.bennani@...</span>
+                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Dir. Thèse</span>
+                <span className="text-[9px] text-neutral-500 truncate block font-mono">karim.bennani@...</span>
               </button>
 
               {/* 3. ADMINISTRATION CED */}
               <button
                 type="button"
-                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma', 'Administration CED')}
+                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma', 'Directeur de Structure & CED')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-                title="Administration CED USMBA"
+                title="Direction CED USMBA"
               >
                 <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 3</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5">Admin CED</span>
-                <span className="text-[10px] text-neutral-500 truncate block font-mono">ced.admin@...</span>
+                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Dir. CED</span>
+                <span className="text-[9px] text-neutral-500 truncate block font-mono">ced.admin@...</span>
+              </button>
+
+              {/* 4. ADMIN SYSTEM */}
+              <button
+                type="button"
+                onClick={() => handleSelectEmail('admin.system@usmba.ac.ma', 'Administrateur Plateforme')}
+                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
+                title="Administration Système Plateforme"
+              >
+                <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Espace 4</div>
+                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Admin Sys.</span>
+                <span className="text-[9px] text-neutral-500 truncate block font-mono">admin.system@...</span>
               </button>
             </div>
           </div>

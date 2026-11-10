@@ -17,6 +17,7 @@ import {
   ReEnrollmentEntity,
   NotificationEntity,
   AuditLogEntity,
+  PlatformSettingsEntity,
 } from '../types';
 import { ROLES, DOCUMENT_TYPES, DOCUMENT_STATUS } from '../config/constants';
 
@@ -36,6 +37,7 @@ export interface DatabaseSchema {
   reEnrollments: ReEnrollmentEntity[];
   notifications: NotificationEntity[];
   auditLogs: AuditLogEntity[];
+  settings: PlatformSettingsEntity;
 }
 
 const DB_DIR = path.resolve(process.cwd(), 'data');
@@ -58,6 +60,10 @@ class DatabaseService {
       try {
         const fileContent = fs.readFileSync(DB_PATH, 'utf-8');
         const parsed: DatabaseSchema = JSON.parse(fileContent);
+        if (!parsed.settings) {
+          parsed.settings = this.getDefaultSettings();
+          this.saveToDisk(parsed);
+        }
         // Ensure candidates have their 4 initial documents if missing
         const youssefDocs = (parsed.documents || []).filter((d) => d.candidateId === 'cand-youssef');
         if (youssefDocs.length < 4) {
@@ -505,6 +511,22 @@ class DatabaseService {
       reEnrollments,
       notifications,
       auditLogs,
+      settings: this.getDefaultSettings(),
+    };
+  }
+
+  private getDefaultSettings(): PlatformSettingsEntity {
+    return {
+      platformName: 'GCD USMBA — Gestion du Cycle Doctoral',
+      universityName: 'Université Sidi Mohamed Ben Abdellah de Fès',
+      institutionalEmailDomain: '@usmba.ac.ma',
+      maxApplicationsPerCandidate: 3,
+      enableDocumentCameraScan: true,
+      campaignStartDate: '2026-09-01',
+      campaignEndDate: '2026-11-30',
+      reEnrollmentDeadline: '2026-12-15',
+      maintenanceMode: false,
+      autoNotifyOnStatusChange: true,
     };
   }
 

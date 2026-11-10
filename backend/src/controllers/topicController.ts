@@ -93,4 +93,28 @@ export const topicController = {
       next(err);
     }
   },
+
+  signTopicStructure(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Authentification requise' });
+        return;
+      }
+
+      const { signatoryName, signatoryRole, comments } = req.body;
+      const updated = topicService.signTopicStructure(req.user, req.params.id, {
+        signatoryName: signatoryName || `${req.user.firstName} ${req.user.lastName}`,
+        signatoryRole: signatoryRole || 'Directeur de Structure de Recherche',
+        comments,
+      });
+
+      res.json({
+        success: true,
+        message: 'Sujet de thèse officiellement validé et signé avec visa CED.',
+        topic: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
 };

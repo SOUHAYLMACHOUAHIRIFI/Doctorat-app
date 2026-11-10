@@ -78,13 +78,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenLogin, onOpenRegister }) =
           badge: 'Directeur de Thèse',
           icon: <UserCheck className="w-4 h-4 text-neutral-800" />,
         };
+      case 'CED':
       case 'STRUCTURE_DIRECTOR':
       case 'directeur_structure':
       case 'CED_ADMIN':
+        return {
+          label: 'Direction de Structure & CED',
+          badge: 'Directeur de Structure & CED',
+          icon: <Shield className="w-4 h-4 text-neutral-900" />,
+        };
+      case 'ADMIN':
       case 'SYSTEM_ADMIN':
         return {
-          label: 'Espace Administration CED',
-          badge: 'Administration CED / Structure',
+          label: 'Administration Système',
+          badge: 'Administrateur Plateforme',
           icon: <Shield className="w-4 h-4 text-neutral-900" />,
         };
       default:

@@ -218,3 +218,17 @@ export interface AuditLogEntity {
   ipAddress?: string;
   createdAt: string;
 }
+
+export interface PlatformSettingsEntity {
+  platformName: string;
+  universityName: string;
+  institutionalEmailDomain: string;
+  maxApplicationsPerCandidate: number;
+  enableDocumentCameraScan: boolean;
+  campaignStartDate: string;
+  campaignEndDate: string;
+  reEnrollmentDeadline: string;
+  maintenanceMode: boolean;
+  autoNotifyOnStatusChange: boolean;
+}
+

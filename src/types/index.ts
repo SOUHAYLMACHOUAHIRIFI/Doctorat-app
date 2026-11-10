@@ -3,7 +3,9 @@ export type Role =
   | 'DOCTORANT'
   | 'SUPERVISOR'
   | 'STRUCTURE_DIRECTOR'
+  | 'CED'
   | 'CED_ADMIN'
+  | 'ADMIN'
   | 'SYSTEM_ADMIN'
   // Backward compatibility aliases
   | 'candidat'
@@ -65,6 +67,7 @@ export type ApplicationStatus =
   | 'a_corriger'
   | 'validation_structure'
   | 'admis'
+  | 'liste_attente'
   | 'refuse'
   | 'BROUILLON'
   | 'SOUMIS'
@@ -79,6 +82,7 @@ export type ApplicationStatus =
   | 'ACCEPTED'
   | 'REJETE_STRUCTURE'
   | 'ADMIS'
+  | 'LISTE_ATTENTE'
   | 'REFUSE';
 
 export type DocumentType = 'baccalaureat' | 'releve_notes' | 'diplomes' | 'cin';
@@ -226,4 +230,43 @@ export interface DashboardStats {
     total: number;
     validated: number;
   };
+}
+
+export interface PlatformSettings {
+  platformName: string;
+  universityName: string;
+  institutionalEmailDomain: string;
+  maxApplicationsPerCandidate: number;
+  enableDocumentCameraScan: boolean;
+  campaignStartDate: string;
+  campaignEndDate: string;
+  reEnrollmentDeadline: string;
+  maintenanceMode: boolean;
+  autoNotifyOnStatusChange: boolean;
+}
+
+export interface RbacMatrixItem {
+  role: string;
+  roleLabel: string;
+  description: string;
+  permissions: Array<{ code: string; label: string; granted: boolean }>;
+}
+
+export interface DataOverview {
+  totalUsers: number;
+  activeUsers: number;
+  usersByRole: Record<string, number>;
+  totalTopics: number;
+  topicsByStatus: Record<string, number>;
+  totalApplications: number;
+  applicationsByStatus: Record<string, number>;
+  totalDocuments: number;
+  totalReEnrollments: number;
+  totalAuditLogs: number;
+  establishmentStats: Array<{
+    establishment: string;
+    shortCode: string;
+    topicsCount: number;
+    applicationsCount: number;
+  }>;
 }

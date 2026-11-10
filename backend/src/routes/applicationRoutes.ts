@@ -28,8 +28,24 @@ router.post(
 router.post(
   '/:id/validate-structure',
   requireAuth,
-  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED_ADMIN, ROLES.SYSTEM_ADMIN),
+  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED, ROLES.CED_ADMIN, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
   applicationController.validateApplicationStructure
+);
+
+// Structure / CED Final Admission Result Notification (ADMIS, LISTE_ATTENTE, REFUSE)
+router.post(
+  '/:id/decision-final',
+  requireAuth,
+  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED, ROLES.CED_ADMIN, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  applicationController.decideFinalAdmission
+);
+
+// Structure / CED Promote Waitlisted Candidate to Admitted
+router.post(
+  '/:id/promote-waitlist',
+  requireAuth,
+  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED, ROLES.CED_ADMIN, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  applicationController.promoteWaitlist
 );
 
 export default router;

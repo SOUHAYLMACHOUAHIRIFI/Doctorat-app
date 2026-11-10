@@ -143,6 +143,13 @@ export const api = {
         body: JSON.stringify({ decision, feedback }),
       });
     },
+
+    async signStructure(id: string, signatoryName: string, signatoryRole: string, comments?: string) {
+      return request<{ success: boolean; topic: any; message: string }>(`/topics/${id}/sign-structure`, {
+        method: 'POST',
+        body: JSON.stringify({ signatoryName, signatoryRole, comments }),
+      });
+    },
   },
 
   documents: {
@@ -241,6 +248,19 @@ export const api = {
         body: JSON.stringify({ decision, feedback }),
       });
     },
+
+    async decideFinal(id: string, decision: 'ADMIS' | 'LISTE_ATTENTE' | 'REFUSE', feedback: string, rank?: number) {
+      return request<{ success: boolean; application: any; message: string }>(`/applications/${id}/decision-final`, {
+        method: 'POST',
+        body: JSON.stringify({ decision, feedback, rank }),
+      });
+    },
+
+    async promoteWaitlist(id: string) {
+      return request<{ success: boolean; application: any; message: string }>(`/applications/${id}/promote-waitlist`, {
+        method: 'POST',
+      });
+    },
   },
 
   reEnrollments: {
@@ -311,11 +331,78 @@ export const api = {
       return request<{ success: boolean; count: number; users: any[] }>('/admin/users');
     },
 
+    async createUser(payload: {
+      email: string;
+      password?: string;
+      firstName: string;
+      lastName: string;
+      cin: string;
+      phone?: string;
+      role: string;
+      establishment?: string;
+      laboratory?: string;
+    }) {
+      return request<{ success: boolean; user: any; message: string }>('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    async updateUser(userId: string, payload: Record<string, any>) {
+      return request<{ success: boolean; user: any; message: string }>(`/admin/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+
     async updateUserRole(userId: string, role: string, isActive: boolean) {
       return request<{ success: boolean; user: any; message: string }>(`/admin/users/${userId}/role`, {
         method: 'PUT',
         body: JSON.stringify({ role, isActive }),
       });
+    },
+
+    async resetPassword(userId: string, newPassword?: string) {
+      return request<{ success: boolean; message: string }>(`/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify({ newPassword }),
+      });
+    },
+
+    async deleteUser(userId: string) {
+      return request<{ success: boolean; message: string }>(`/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+    },
+
+    async getRbacMatrix() {
+      return request<{ success: boolean; matrix: any[] }>('/admin/rbac-matrix');
+    },
+
+    async getSettings() {
+      return request<{ success: boolean; settings: any; establishments: string[] }>('/admin/settings');
+    },
+
+    async updateSettings(payload: Record<string, any>) {
+      return request<{ success: boolean; settings: any; message: string }>('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+
+    async getOverview() {
+      return request<{ success: boolean; overview: any }>('/admin/overview');
+    },
+
+    async exportData() {
+      return request<{
+        success: boolean;
+        exportTimestamp: string;
+        admittedCandidates: any[];
+        allApplicationsCount: number;
+        topicsCount: number;
+        usersCount: number;
+      }>('/admin/export');
     },
 
     async getAcademicYears() {

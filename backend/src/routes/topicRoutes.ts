@@ -26,12 +26,20 @@ router.put(
   topicController.updateTopic
 );
 
-// Structure / CED review
+// Structure / CED review & validation
 router.post(
   '/:id/review',
   requireAuth,
-  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED_ADMIN, ROLES.SYSTEM_ADMIN),
+  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED, ROLES.CED_ADMIN, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
   topicController.reviewTopicStructure
+);
+
+// Structure / CED official signing with digital visa
+router.post(
+  '/:id/sign-structure',
+  requireAuth,
+  requireRoles(ROLES.STRUCTURE_DIRECTOR, ROLES.CED, ROLES.CED_ADMIN, ROLES.ADMIN, ROLES.SYSTEM_ADMIN),
+  topicController.signTopicStructure
 );
 
 export default router;

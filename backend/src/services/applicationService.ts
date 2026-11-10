@@ -409,6 +409,182 @@ export const applicationService = {
     return populateApplicationWithDocuments(updated);
   },
 
+  decideFinalAdmission(
+    directorUser: SafeUser,
+    appId: string,
+    decision: 'ADMIS' | 'LISTE_ATTENTE' | 'REFUSE',
+    feedback: string,
+    rank?: number
+  ): ApplicationEntity {
+    const app = applicationRepository.findById(appId);
+    if (!app) throw new Error('Candidature non trouvée.');
+
+    let nextStep: number;
+    let nextStatus: string;
+
+    if (decision === 'ADMIS') {
+      nextStep = APPLICATION_STEPS.ADMISSION_CED; // 5
+      nextStatus = APPLICATION_STATUS.CED_APPROVED; // 'CED_APPROVED'
+    } else if (decision === 'LISTE_ATTENTE') {
+      nextStep = APPLICATION_STEPS.VALIDATION_STRUCTURE; // 4
+      nextStatus = 'LISTE_ATTENTE';
+    } else {
+      nextStep = APPLICATION_STEPS.ADMISSION_CED; // 5
+      nextStatus = APPLICATION_STATUS.REFUSE;
+    }
+
+    const rankNote = rank ? ` (Rang d'attente : n°${rank})` : '';
+    const finalNotes = `${feedback.trim()}${rankNote}`;
+
+    const updated = applicationRepository.update(appId, {
+      step: nextStep,
+      currentStep: nextStep,
+      status: nextStatus,
+      structureDecision: decision === 'ADMIS' ? 'VALIDE' : decision === 'LISTE_ATTENTE' ? 'LISTE_ATTENTE' : 'REJETE',
+      structureFeedback: finalNotes,
+      updatedAt: new Date().toISOString().split('T')[0],
+    });
+
+    if (!updated) throw new Error('Erreur de mise à jour.');
+
+    // If ADMIS: promote candidate to DOCTORANT!
+    if (decision === 'ADMIS') {
+      const candidateEntity = db.get('candidates').find((c) => c.id === app.candidateId);
+      if (candidateEntity) {
+        const user = db.get('users').find((u) => u.id === candidateEntity.userId);
+        if (user) {
+          user.role = ROLES.DOCTORANT;
+          user.updatedAt = new Date().toISOString().split('T')[0];
+        }
+
+        const doctoralStudents = db.get('doctoralStudents');
+        const existingStudent = doctoralStudents.find((s) => s.userId === candidateEntity.userId);
+
+        if (!existingStudent) {
+          const newStudent: DoctoralStudentEntity = {
+            id: `doc-stud-${Date.now().toString(36)}`,
+            userId: candidateEntity.userId,
+            cneNumber: `N${Math.floor(100000000 + Math.random() * 900000000)}`,
+            thesisTitle: app.topicTitle,
+            topicId: app.topicId,
+            supervisorId: app.supervisorId,
+            structureId: 'struct-lisac',
+            enrollmentYear: 1,
+            createdAt: new Date().toISOString().split('T')[0],
+            updatedAt: new Date().toISOString().split('T')[0],
+          };
+          doctoralStudents.push(newStudent);
+        }
+        db.save();
+      }
+    }
+
+    auditService.log(
+      directorUser.email,
+      directorUser.role,
+      `DECISION_FINAL_${decision}`,
+      'Application',
+      appId,
+      { decision, feedback: finalNotes, rank },
+      directorUser.id
+    );
+
+    // Notify candidate
+    const candidateEntity = db.get('candidates').find((c) => c.id === app.candidateId);
+    if (candidateEntity) {
+      let notifTitle = 'Résultat de candidature au Doctorat';
+      let notifType: 'SUCCESS' | 'WARNING' | 'INFO' = 'INFO';
+      let notifMsg = finalNotes;
+
+      if (decision === 'ADMIS') {
+        notifTitle = '🎉 Félicitations : Admission définitive en Doctorat prononcée !';
+        notifType = 'SUCCESS';
+        notifMsg = `Votre candidature pour le sujet "${app.topicTitle}" a été officiellement retenue en Liste Principale. Vous pouvez dès maintenant télécharger votre attestation d'admission.`;
+      } else if (decision === 'LISTE_ATTENTE') {
+        notifTitle = '⏳ Résultat : Inscription sur Liste d’Attente';
+        notifType = 'WARNING';
+        notifMsg = `Vous avez été classé(e) sur la Liste d'Attente${rank ? ` (Rang : n°${rank})` : ''} pour le sujet "${app.topicTitle}". En cas de désistement, la structure prendra contact avec vous.`;
+      } else {
+        notifTitle = 'Décision de la commission de sélection doctorale';
+        notifType = 'WARNING';
+        notifMsg = `Votre dossier n'a pas été retenu pour le sujet "${app.topicTitle}". Motif : ${feedback}`;
+      }
+
+      notificationService.notify(candidateEntity.userId, notifTitle, notifMsg, notifType, '/candidat');
+    }
+
+    return populateApplicationWithDocuments(updated);
+  },
+
+  promoteFromWaitlist(directorUser: SafeUser, appId: string): ApplicationEntity {
+    const app = applicationRepository.findById(appId);
+    if (!app) throw new Error('Candidature non trouvée.');
+
+    if (app.status !== 'LISTE_ATTENTE' && app.structureDecision !== 'LISTE_ATTENTE') {
+      throw new Error('Seules les candidatures actuellement sur Liste d’Attente peuvent être promues en Liste Principale.');
+    }
+
+    const updated = applicationRepository.update(appId, {
+      step: APPLICATION_STEPS.ADMISSION_CED,
+      currentStep: APPLICATION_STEPS.ADMISSION_CED,
+      status: APPLICATION_STATUS.CED_APPROVED,
+      structureDecision: 'VALIDE',
+      structureFeedback: 'Candidature promue de la Liste d’Attente vers la Liste Principale définitive suite aux délibérations du CED.',
+      updatedAt: new Date().toISOString().split('T')[0],
+    });
+
+    if (!updated) throw new Error('Erreur de mise à jour.');
+
+    const candidateEntity = db.get('candidates').find((c) => c.id === app.candidateId);
+    if (candidateEntity) {
+      const user = db.get('users').find((u) => u.id === candidateEntity.userId);
+      if (user) {
+        user.role = ROLES.DOCTORANT;
+        user.updatedAt = new Date().toISOString().split('T')[0];
+      }
+
+      const doctoralStudents = db.get('doctoralStudents');
+      const existingStudent = doctoralStudents.find((s) => s.userId === candidateEntity.userId);
+
+      if (!existingStudent) {
+        const newStudent: DoctoralStudentEntity = {
+          id: `doc-stud-${Date.now().toString(36)}`,
+          userId: candidateEntity.userId,
+          cneNumber: `N${Math.floor(100000000 + Math.random() * 900000000)}`,
+          thesisTitle: app.topicTitle,
+          topicId: app.topicId,
+          supervisorId: app.supervisorId,
+          structureId: 'struct-lisac',
+          enrollmentYear: 1,
+          createdAt: new Date().toISOString().split('T')[0],
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+        doctoralStudents.push(newStudent);
+      }
+      db.save();
+
+      notificationService.notify(
+        candidateEntity.userId,
+        '🎉 Promotion en Liste Principale : Admission validée !',
+        `Bonne nouvelle ! Suite à la libération d’une place, vous venez d’être promu(e) en Liste Principale d’admission pour le sujet "${app.topicTitle}".`,
+        'SUCCESS',
+        '/candidat'
+      );
+    }
+
+    auditService.log(
+      directorUser.email,
+      directorUser.role,
+      'WAITLIST_PROMOTE_ADMIT',
+      'Application',
+      appId,
+      { candidateEmail: app.candidateEmail, topicTitle: app.topicTitle },
+      directorUser.id
+    );
+
+    return populateApplicationWithDocuments(updated);
+  },
+
   validateApplicationStructure(
     directorUser: SafeUser,
     appId: string,

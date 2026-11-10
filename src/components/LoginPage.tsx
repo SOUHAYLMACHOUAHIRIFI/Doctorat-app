@@ -278,7 +278,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
               {/* Profile 1: Candidat */}
               <button
                 type="button"
@@ -289,8 +289,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
                   <GraduationCap className="w-3 h-3 text-neutral-700" />
                   <span>Espace 1</span>
                 </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate">Candidat</div>
-                <div className="text-[10px] text-neutral-500 font-mono truncate">youssef.elamrani@...</div>
+                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Candidat</div>
+                <div className="text-[9px] text-neutral-500 font-mono truncate">youssef.elamrani@...</div>
               </button>
 
               {/* Profile 2: Directeur de Thèse */}
@@ -303,22 +303,36 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
                   <UserCheck className="w-3 h-3 text-neutral-700" />
                   <span>Espace 2</span>
                 </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate">Dir. Thèse</div>
-                <div className="text-[10px] text-neutral-500 font-mono truncate">karim.bennani@...</div>
+                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Dir. Thèse</div>
+                <div className="text-[9px] text-neutral-500 font-mono truncate">karim.bennani@...</div>
               </button>
 
-              {/* Profile 3: Administration CED */}
+              {/* Profile 3: Directeur de Structure / CED */}
               <button
                 type="button"
-                onClick={() => handleSelectTestProfile('ced.admin@usmba.ac.ma', 'Admin CED')}
+                onClick={() => handleSelectTestProfile('ced.admin@usmba.ac.ma', 'Directeur CED')}
                 className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
               >
                 <div className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 uppercase">
                   <Building2 className="w-3 h-3 text-neutral-700" />
                   <span>Espace 3</span>
                 </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate">Admin CED</div>
-                <div className="text-[10px] text-neutral-500 font-mono truncate">ced.admin@...</div>
+                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Dir. CED</div>
+                <div className="text-[9px] text-neutral-500 font-mono truncate">ced.admin@...</div>
+              </button>
+
+              {/* Profile 4: Administrateur Plateforme */}
+              <button
+                type="button"
+                onClick={() => handleSelectTestProfile('admin.system@usmba.ac.ma', 'Admin Système')}
+                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
+              >
+                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-700 uppercase">
+                  <ShieldCheck className="w-3 h-3 text-purple-700" />
+                  <span>Espace 4</span>
+                </div>
+                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Admin Sys.</div>
+                <div className="text-[9px] text-neutral-500 font-mono truncate">admin.system@...</div>
               </button>
             </div>
           </div>

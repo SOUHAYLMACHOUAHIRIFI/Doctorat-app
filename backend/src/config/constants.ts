@@ -3,11 +3,13 @@ export const ROLES = {
   DOCTORANT: 'DOCTORANT',
   SUPERVISOR: 'SUPERVISOR',
   STRUCTURE_DIRECTOR: 'STRUCTURE_DIRECTOR',
+  CED: 'CED',
   CED_ADMIN: 'CED_ADMIN',
+  ADMIN: 'ADMIN',
   SYSTEM_ADMIN: 'SYSTEM_ADMIN',
 } as const;
 
-export type RoleType = (typeof ROLES)[keyof typeof ROLES];
+export type RoleType = (typeof ROLES)[keyof typeof ROLES] | string;
 
 export const DOCUMENT_TYPES = {
   BACCALAUREAT: 'baccalaureat',
@@ -64,6 +66,7 @@ export const APPLICATION_STATUS = {
   ACCEPTED: 'ACCEPTED',
   REJETE_STRUCTURE: 'REJETE_STRUCTURE',
   ADMIS: 'ADMIS',
+  LISTE_ATTENTE: 'LISTE_ATTENTE',
   REFUSE: 'REFUSE',
 } as const;
 

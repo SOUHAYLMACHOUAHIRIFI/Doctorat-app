@@ -11,6 +11,9 @@ import {
   ApplicationStatus,
   AppNotification,
   DashboardStats,
+  PlatformSettings,
+  RbacMatrixItem,
+  DataOverview,
 } from '../types';
 import { api, getStoredToken } from '../services/api';
 
@@ -43,6 +46,7 @@ export interface AppContextType {
   updateTopic: (topicId: string, updatedFields: Partial<ThesisTopic>) => Promise<void>;
   approveTopicStructure: (topicId: string, feedback?: string) => Promise<void>;
   rejectTopicStructure: (topicId: string, feedback?: string) => Promise<void>;
+  signTopicStructure: (topicId: string, comments?: string) => Promise<void>;
 
   // Applications management
   applications: CandidateApplication[];
@@ -83,6 +87,13 @@ export interface AppContextType {
     decision: 'valide' | 'rejete' | 'VALIDE' | 'REJETE',
     feedback?: string
   ) => Promise<void>;
+  decideFinalAdmission: (
+    appId: string,
+    decision: 'ADMIS' | 'LISTE_ATTENTE' | 'REFUSE',
+    feedback?: string,
+    rank?: number
+  ) => Promise<void>;
+  promoteWaitlist: (appId: string) => Promise<void>;
   currentCandidateApp?: CandidateApplication;
   candidateApplications: CandidateApplication[];
 
@@ -138,6 +149,32 @@ export interface AppContextType {
   // Notification Toast
   toastMessage: string | null;
   showToast: (msg: string) => void;
+
+  // Platform Administration (ADMIN / SYSTEM_ADMIN)
+  adminUsers: User[];
+  refreshAdminUsers: () => Promise<void>;
+  createAdminUser: (payload: {
+    email: string;
+    password?: string;
+    firstName: string;
+    lastName: string;
+    cin: string;
+    phone?: string;
+    role: Role;
+    establishment?: string;
+    laboratory?: string;
+  }) => Promise<void>;
+  updateAdminUser: (userId: string, payload: Partial<User>) => Promise<void>;
+  resetAdminUserPassword: (userId: string, newPassword?: string) => Promise<void>;
+  deleteAdminUser: (userId: string) => Promise<void>;
+  rbacMatrix: RbacMatrixItem[];
+  refreshRbacMatrix: () => Promise<void>;
+  platformSettings: PlatformSettings | null;
+  refreshPlatformSettings: () => Promise<void>;
+  updatePlatformSettings: (settings: Partial<PlatformSettings>) => Promise<void>;
+  dataOverview: DataOverview | null;
+  refreshDataOverview: () => Promise<void>;
+  exportPlatformData: () => Promise<any>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -256,6 +293,8 @@ function normalizeApplication(a: any): CandidateApplication {
     statusStr === 'AVIS_FAVORABLE'
   ) {
     resolvedStep = 4;
+  } else if (statusStr === 'LISTE_ATTENTE') {
+    resolvedStep = 4;
   } else if (statusStr === 'AVIS_DEFAVORABLE') {
     resolvedStep = 3;
   } else if (statusStr === 'SOUMIS' || statusStr === 'SUBMITTED' || statusStr === 'A_CORRIGER') {
@@ -272,6 +311,8 @@ function normalizeApplication(a: any): CandidateApplication {
     normalizedStatus = 'SUPERVISOR_APPROVED';
   } else if (statusStr === 'CED_APPROVED' || statusStr === 'ADMIS' || statusStr === 'ACCEPTED' || statusStr === 'VALIDE_STRUCTURE') {
     normalizedStatus = 'CED_APPROVED';
+  } else if (statusStr === 'LISTE_ATTENTE') {
+    normalizedStatus = 'LISTE_ATTENTE';
   } else if (statusStr === 'A_CORRIGER') {
     normalizedStatus = 'A_CORRIGER';
   } else if (statusStr === 'AVIS_DEFAVORABLE') {
@@ -348,6 +389,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [reRegistrations, setReRegistrations] = useState<ReRegistration[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  // Administration state
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [rbacMatrix, setRbacMatrix] = useState<RbacMatrixItem[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
+  const [dataOverview, setDataOverview] = useState<DataOverview | null>(null);
 
   // Attachment Modal
   const [viewingAttachment, setViewingAttachment] = useState<{
@@ -650,6 +697,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const signTopicStructure = async (topicId: string, comments?: string) => {
+    try {
+      const signatoryName = currentUser ? currentUser.name : 'Direction de Structure';
+      const signatoryRole =
+        currentUser?.role === 'CED' || currentUser?.role === 'CED_ADMIN'
+          ? 'Direction du Pôle Doctoral (CED USMBA)'
+          : 'Direction de Structure de Recherche';
+      await api.topics.signStructure(topicId, signatoryName, signatoryRole, comments);
+      await refreshTopics();
+      showToast('Sujet de thèse officiellement validé et signé avec visa CED.');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la signature du sujet.');
+    }
+  };
+
   // Applications
   const addApplication = async (
     topicId: string,
@@ -794,6 +856,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de la validation structure.');
+    }
+  };
+
+  const decideFinalAdmission = async (
+    appId: string,
+    decision: 'ADMIS' | 'LISTE_ATTENTE' | 'REFUSE',
+    feedback?: string,
+    rank?: number
+  ) => {
+    try {
+      await api.applications.decideFinal(appId, decision, feedback || 'Décision formelle de la commission CED.', rank);
+      await Promise.allSettled([refreshApplications(), refreshTopics(), refreshStats()]);
+      if (decision === 'ADMIS') {
+        showToast('Résultat notifié : Candidat admis définitivement en Liste Principale.');
+      } else if (decision === 'LISTE_ATTENTE') {
+        showToast(`Résultat notifié : Candidat inscrit sur Liste d’Attente${rank ? ` (n°${rank})` : ''}.`);
+      } else {
+        showToast('Résultat notifié : Candidature non retenue.');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la notification des résultats.');
+    }
+  };
+
+  const promoteWaitlist = async (appId: string) => {
+    try {
+      await api.applications.promoteWaitlist(appId);
+      await Promise.allSettled([refreshApplications(), refreshTopics(), refreshStats()]);
+      showToast('Candidat promu avec succès de la Liste d’Attente vers la Liste Principale !');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la promotion depuis la liste d’attente.');
     }
   };
 
@@ -999,6 +1092,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     : undefined;
 
+  const refreshAdminUsers = useCallback(async () => {
+    try {
+      const res = await api.admin.getUsers();
+      if (res.success && Array.isArray(res.users)) {
+        setAdminUsers(res.users.map(normalizeUser));
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
+  const createAdminUser = async (payload: {
+    email: string;
+    password?: string;
+    firstName: string;
+    lastName: string;
+    cin: string;
+    phone?: string;
+    role: Role;
+    establishment?: string;
+    laboratory?: string;
+  }) => {
+    try {
+      const res = await api.admin.createUser(payload);
+      if (res.success && res.user) {
+        await refreshAdminUsers();
+        showToast(`Compte créé avec succès : ${res.user.firstName} ${res.user.lastName}`);
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la création de l’utilisateur.');
+      throw err;
+    }
+  };
+
+  const updateAdminUser = async (userId: string, payload: Partial<User>) => {
+    try {
+      await api.admin.updateUser(userId, payload);
+      await refreshAdminUsers();
+      showToast('Informations utilisateur mises à jour avec succès.');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la modification.');
+      throw err;
+    }
+  };
+
+  const resetAdminUserPassword = async (userId: string, newPassword?: string) => {
+    try {
+      const res = await api.admin.resetPassword(userId, newPassword);
+      showToast(res.message || 'Mot de passe réinitialisé.');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la réinitialisation du mot de passe.');
+    }
+  };
+
+  const deleteAdminUser = async (userId: string) => {
+    try {
+      const res = await api.admin.deleteUser(userId);
+      await refreshAdminUsers();
+      showToast(res.message || 'Compte utilisateur désactivé.');
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la désactivation du compte.');
+    }
+  };
+
+  const refreshRbacMatrix = useCallback(async () => {
+    try {
+      const res = await api.admin.getRbacMatrix();
+      if (res.success && Array.isArray(res.matrix)) {
+        setRbacMatrix(res.matrix);
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
+  const refreshPlatformSettings = useCallback(async () => {
+    try {
+      const res = await api.admin.getSettings();
+      if (res.success && res.settings) {
+        setPlatformSettings(res.settings);
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
+  const updatePlatformSettings = async (settings: Partial<PlatformSettings>) => {
+    try {
+      const res = await api.admin.updateSettings(settings);
+      if (res.success && res.settings) {
+        setPlatformSettings(res.settings);
+        showToast('Paramètres de la plateforme enregistrés avec succès.');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de la mise à jour des paramètres.');
+    }
+  };
+
+  const refreshDataOverview = useCallback(async () => {
+    try {
+      const res = await api.admin.getOverview();
+      if (res.success && res.overview) {
+        setDataOverview(res.overview);
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }, []);
+
+  const exportPlatformData = async () => {
+    try {
+      const res = await api.admin.exportData();
+      return res;
+    } catch (err: any) {
+      showToast(err.message || 'Erreur lors de l’export des données.');
+      throw err;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1015,6 +1227,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTopic,
         approveTopicStructure,
         rejectTopicStructure,
+        signTopicStructure,
         applications,
         refreshApplications,
         addApplication,
@@ -1022,6 +1235,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateApplicationProgress,
         evaluateApplicationSupervisor,
         validateApplicationStructure,
+        decideFinalAdmission,
+        promoteWaitlist,
         currentCandidateApp,
         candidateApplications,
         documents,
@@ -1050,6 +1265,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentView,
         toastMessage,
         showToast,
+
+        // Admin features
+        adminUsers,
+        refreshAdminUsers,
+        createAdminUser,
+        updateAdminUser,
+        resetAdminUserPassword,
+        deleteAdminUser,
+        rbacMatrix,
+        refreshRbacMatrix,
+        platformSettings,
+        refreshPlatformSettings,
+        updatePlatformSettings,
+        dataOverview,
+        refreshDataOverview,
+        exportPlatformData,
       }}
     >
       {children}
@@ -1072,11 +1303,14 @@ function getRoleLabel(role: Role): string {
     case 'SUPERVISOR':
     case 'directeur_these':
       return 'Espace Directeur de Thèse';
+    case 'CED':
     case 'STRUCTURE_DIRECTOR':
     case 'directeur_structure':
-    case 'CED_ADMIN':
+      return 'Direction de Structure & CED';
+    case 'ADMIN':
     case 'SYSTEM_ADMIN':
-      return 'Espace Administration CED';
+    case 'CED_ADMIN':
+      return 'Administration Système & Plateforme';
     default:
       return 'Portail Doctoral';
   }

@@ -145,4 +145,53 @@ export const applicationController = {
       next(err);
     }
   },
+
+  decideFinalAdmission(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Authentification requise' });
+        return;
+      }
+
+      const { decision, feedback, rank } = req.body;
+      if (!decision || !['ADMIS', 'LISTE_ATTENTE', 'REFUSE'].includes(decision)) {
+        res.status(400).json({ success: false, message: 'Décision invalide (ADMIS, LISTE_ATTENTE ou REFUSE requise).' });
+        return;
+      }
+
+      const updated = applicationService.decideFinalAdmission(
+        req.user,
+        req.params.id,
+        decision,
+        feedback || 'Décision officielle de la commission doctorale CED.',
+        rank ? Number(rank) : undefined
+      );
+
+      res.json({
+        success: true,
+        message: `Résultat officiel notifié : ${decision === 'ADMIS' ? 'Admis en liste principale' : decision === 'LISTE_ATTENTE' ? 'Inscrit sur liste d’attente' : 'Candidature non retenue'}.`,
+        application: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  promoteWaitlist(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, message: 'Authentification requise' });
+        return;
+      }
+
+      const updated = applicationService.promoteFromWaitlist(req.user, req.params.id);
+      res.json({
+        success: true,
+        message: 'Candidat promu avec succès de la Liste d’Attente vers la Liste Principale (Admission validée).',
+        application: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
 };

@@ -81,15 +81,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
     }
   };
 
-  const handleSelectEmail = (fEmail: string, roleName: string) => {
-    setEmail(fEmail);
-    setPassword(''); // Strictly cleared - Enforce manual entry
-    setError(null);
-    setSuccessMsg(null);
-    setInfoNotice(
-      `Email ${roleName} sélectionné (${fEmail}). Veuillez saisir manuellement votre mot de passe pour des raisons de sécurité.`
-    );
-  };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
@@ -260,69 +252,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onOpenR
               </button>
             </form>
           )}
-
-          {/* Institutional Fast Select for 3 Principal Spaces */}
-          <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold text-neutral-800 flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-neutral-600" />
-                <span>Sélection rapide d’un compte institutionnel</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-neutral-500">
-              Cliquez pour sélectionner un profil. Mot de passe académique : <strong className="text-neutral-800 font-mono">usmba2026</strong> (saisie manuelle et masquée obligatoire) :
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {/* 1. CANDIDATE */}
-              <button
-                type="button"
-                onClick={() => handleSelectEmail('youssef.elamrani@usmba.ac.ma', 'Candidat')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-                title="Candidat Youssef El Amrani"
-              >
-                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 1</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Candidat</span>
-                <span className="text-[9px] text-neutral-500 truncate block font-mono">youssef.elamrani@...</span>
-              </button>
-
-              {/* 2. SUPERVISOR */}
-              <button
-                type="button"
-                onClick={() => handleSelectEmail('karim.bennani@usmba.ac.ma', 'Directeur de Thèse')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-                title="Directeur Pr. Karim Bennani"
-              >
-                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 2</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Dir. Thèse</span>
-                <span className="text-[9px] text-neutral-500 truncate block font-mono">karim.bennani@...</span>
-              </button>
-
-              {/* 3. ADMINISTRATION CED */}
-              <button
-                type="button"
-                onClick={() => handleSelectEmail('ced.admin@usmba.ac.ma', 'Directeur de Structure & CED')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-                title="Direction CED USMBA"
-              >
-                <div className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Espace 3</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Dir. CED</span>
-                <span className="text-[9px] text-neutral-500 truncate block font-mono">ced.admin@...</span>
-              </button>
-
-              {/* 4. ADMIN SYSTEM */}
-              <button
-                type="button"
-                onClick={() => handleSelectEmail('admin.system@usmba.ac.ma', 'Administrateur Plateforme')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-                title="Administration Système Plateforme"
-              >
-                <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Espace 4</div>
-                <span className="font-bold text-neutral-900 block truncate mt-0.5 text-[11px]">Admin Sys.</span>
-                <span className="text-[9px] text-neutral-500 truncate block font-mono">admin.system@...</span>
-              </button>
-            </div>
-          </div>
 
           {/* Register Link */}
           <div className="pt-2 border-t border-neutral-100 text-center space-y-1">

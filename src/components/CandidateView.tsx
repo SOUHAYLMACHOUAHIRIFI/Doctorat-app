@@ -454,16 +454,6 @@ export const CandidateView: React.FC<CandidateViewProps> = ({ onOpenApply, onOpe
               <span>{currentUser.establishment || 'FST Fès'}</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={onOpenReReg}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap shadow-xs"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Réinscription annuelle</span>
-            </button>
-          </div>
         </div>
       )}
 

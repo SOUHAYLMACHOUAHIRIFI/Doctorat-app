@@ -11,9 +11,6 @@ import {
   CheckCircle2,
   Info,
   UserPlus,
-  GraduationCap,
-  UserCheck,
-  Building2,
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -92,16 +89,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
     }
   };
 
-  // Secure test profile select: Fills ONLY the email, strictly clears password and enforces manual entry
-  const handleSelectTestProfile = (profileEmail: string, roleName: string) => {
-    setEmail(profileEmail);
-    setPassword(''); // Strictly cleared - NO pre-filling of password
-    setError(null);
-    setSuccessMsg(null);
-    setInfoNotice(
-      `Email ${roleName} sélectionné (${profileEmail}). Veuillez saisir manuellement votre mot de passe pour des raisons de sécurité.`
-    );
-  };
+
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-neutral-50/60 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
@@ -268,74 +256,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onOpenRegister, onOpenCata
               </button>
             </form>
           )}
-
-          {/* Test Profile Fast Select: Only fills email, NEVER password */}
-          <div className="p-3.5 bg-neutral-50 border border-neutral-200 rounded-2xl space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-neutral-800 flex items-center gap-1.5 text-[11px]">
-                <Info className="w-3.5 h-3.5 text-neutral-600" />
-                <span>Comptes institutionnels de test (évaluation)</span>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
-              {/* Profile 1: Candidat */}
-              <button
-                type="button"
-                onClick={() => handleSelectTestProfile('youssef.elamrani@usmba.ac.ma', 'Candidat')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-              >
-                <div className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 uppercase">
-                  <GraduationCap className="w-3 h-3 text-neutral-700" />
-                  <span>Espace 1</span>
-                </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Candidat</div>
-                <div className="text-[9px] text-neutral-500 font-mono truncate">youssef.elamrani@...</div>
-              </button>
-
-              {/* Profile 2: Directeur de Thèse */}
-              <button
-                type="button"
-                onClick={() => handleSelectTestProfile('karim.bennani@usmba.ac.ma', 'Directeur de Thèse')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-              >
-                <div className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 uppercase">
-                  <UserCheck className="w-3 h-3 text-neutral-700" />
-                  <span>Espace 2</span>
-                </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Dir. Thèse</div>
-                <div className="text-[9px] text-neutral-500 font-mono truncate">karim.bennani@...</div>
-              </button>
-
-              {/* Profile 3: Directeur de Structure / CED */}
-              <button
-                type="button"
-                onClick={() => handleSelectTestProfile('ced.admin@usmba.ac.ma', 'Directeur CED')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-              >
-                <div className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 uppercase">
-                  <Building2 className="w-3 h-3 text-neutral-700" />
-                  <span>Espace 3</span>
-                </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Dir. CED</div>
-                <div className="text-[9px] text-neutral-500 font-mono truncate">ced.admin@...</div>
-              </button>
-
-              {/* Profile 4: Administrateur Plateforme */}
-              <button
-                type="button"
-                onClick={() => handleSelectTestProfile('admin.system@usmba.ac.ma', 'Admin Système')}
-                className="p-2.5 bg-white border border-neutral-200 rounded-xl hover:border-neutral-900 text-left transition-colors shadow-2xs group"
-              >
-                <div className="flex items-center gap-1 text-[10px] font-bold text-purple-700 uppercase">
-                  <ShieldCheck className="w-3 h-3 text-purple-700" />
-                  <span>Espace 4</span>
-                </div>
-                <div className="font-bold text-neutral-900 mt-0.5 truncate text-[11px]">Admin Sys.</div>
-                <div className="text-[9px] text-neutral-500 font-mono truncate">admin.system@...</div>
-              </button>
-            </div>
-          </div>
 
           {/* Action Links */}
           <div className="pt-2 border-t border-neutral-100 flex flex-col items-center gap-2 text-center">

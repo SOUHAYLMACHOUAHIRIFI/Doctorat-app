@@ -18,7 +18,7 @@ async function startServer() {
   // Parse CLI flags like --port 3000 --host 0.0.0.0
   const portArgIndex = process.argv.indexOf('--port');
   const cliPort = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? parseInt(process.argv[portArgIndex + 1], 10) : NaN;
-  const PORT = !isNaN(cliPort) && cliPort > 0 ? cliPort : (ENV.PORT || 3000);
+  const PORT = !isNaN(cliPort) && cliPort > 0 ? cliPort : 3000;
 
   const hostArgIndex = process.argv.indexOf('--host');
   const HOST = hostArgIndex !== -1 && process.argv[hostArgIndex + 1] ? process.argv[hostArgIndex + 1] : '0.0.0.0';
@@ -31,6 +31,9 @@ async function startServer() {
     helmet({
       contentSecurityPolicy: false, // Allows Vite inline scripts and blob/data: URLs in development
       crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+      xFrameOptions: false,
     })
   );
 

@@ -14,8 +14,8 @@
       "isActive": true,
       "isEmailVerified": true,
       "createdAt": "2026-10-01",
-      "updatedAt": "2026-11-10",
-      "lastLoginAt": "2026-11-10T22:52:23.239Z"
+      "updatedAt": "2026-11-17",
+      "lastLoginAt": "2026-11-17T19:28:15.671Z"
     },
     {
       "id": "usr-cand-salma",
@@ -235,6 +235,21 @@
       "isEmailVerified": true,
       "createdAt": "2026-11-10",
       "updatedAt": "2026-11-10"
+    },
+    {
+      "id": "usr-cand-mwl34rf1",
+      "email": "test.cand.1794943695453@usmba.ac.ma",
+      "passwordHash": "$2b$10$wkTn2/yRz5hGcggelznOVez8jMqL/Phnek7pEB/Xii7R9b8NGSUjK",
+      "firstName": "Omar",
+      "lastName": "Bennani",
+      "cin": "CD517562",
+      "phone": "+212 6 00 11 22 33",
+      "establishment": "FST Fès",
+      "role": "CANDIDATE",
+      "isActive": true,
+      "isEmailVerified": true,
+      "createdAt": "2026-11-17",
+      "updatedAt": "2026-11-17"
     }
   ],
   "candidates": [
@@ -313,6 +328,14 @@
       "diplomeOrigine": "Master Recherche",
       "createdAt": "2026-11-10",
       "updatedAt": "2026-11-10"
+    },
+    {
+      "id": "cand-mwl34rf3",
+      "userId": "usr-cand-mwl34rf1",
+      "etablissementOrigine": "FST Fès",
+      "diplomeOrigine": "Master Recherche",
+      "createdAt": "2026-11-17",
+      "updatedAt": "2026-11-17"
     }
   ],
   "doctoralStudents": [
@@ -381,6 +404,25 @@
     }
   ],
   "topics": [
+    {
+      "id": "th-mwl34rks",
+      "title": "Modélisation IA des écoulements fluides dans le Saïss",
+      "summary": "Étude hydrodynamique par réseaux de neurones informés par la physique (PINN).",
+      "keywords": [
+        "PINN",
+        "Hydrodynamique",
+        "IA"
+      ],
+      "establishment": "FST Fès",
+      "laboratoryId": "struct-lisac",
+      "supervisorId": "sup-karim",
+      "slotsTotal": 2,
+      "slotsTaken": 0,
+      "status": "EN_EXAMEN_STRUCTURE",
+      "academicYearId": "ay-2026-2027",
+      "createdAt": "2026-11-17",
+      "updatedAt": "2026-11-17"
+    },
     {
       "id": "th-mwbacb79",
       "title": "Modélisation IA des écoulements fluides dans le Saïss",
@@ -620,6 +662,22 @@
   ],
   "documents": [
     {
+      "id": "doc-mwl34rkw-mv2hwu",
+      "candidateId": "cand-youssef",
+      "candidateEmail": "youssef.elamrani@usmba.ac.ma",
+      "typeCode": "baccalaureat",
+      "title": "Diplôme du Baccalauréat",
+      "fileName": "bac_test.pdf",
+      "fileSize": "1.2 Mo",
+      "fileMimeType": "application/pdf",
+      "dataUrl": "data:application/pdf;base64,JVBERi0xLjc...",
+      "status": "REJETE",
+      "captureMethod": "upload",
+      "uploadedAt": "2026-11-17",
+      "updatedAt": "2026-11-17",
+      "rejectionReason": "Scan illisible, veuillez fournir une copie couleur haute résolution."
+    },
+    {
       "id": "doc-mwbacb7d-r7n4ay",
       "candidateId": "cand-youssef",
       "candidateEmail": "youssef.elamrani@usmba.ac.ma",
@@ -734,6 +792,16 @@
   ],
   "documentReviews": [
     {
+      "id": "rev-mwl34rl0",
+      "documentId": "doc-mwl34rkw-mv2hwu",
+      "reviewerId": "usr-prof-karim",
+      "reviewerName": "Karim Bennani",
+      "previousStatus": "DEPOSE",
+      "newStatus": "REJETE",
+      "reason": "Scan illisible, veuillez fournir une copie couleur haute résolution.",
+      "reviewedAt": "2026-11-17"
+    },
+    {
       "id": "rev-mwbacb7h",
       "documentId": "doc-mwbacb7d-r7n4ay",
       "reviewerId": "usr-prof-karim",
@@ -823,6 +891,27 @@
   ],
   "enrollments": [],
   "reEnrollments": [
+    {
+      "id": "re-mwl34rl4",
+      "studentId": "doc-stud-anass",
+      "studentName": "Anass Tazi",
+      "studentEmail": "anass.tazi@usmba.ac.ma",
+      "supervisorId": "sup-karim",
+      "supervisorName": "Pr. Karim Bennani",
+      "academicYearId": "ay-2026-2027",
+      "academicYearCode": "2026-2027",
+      "yearNumber": 3,
+      "thesisTitle": "Architectures neuromorphiques et vision par ordinateur basse consommation pour drones",
+      "establishment": "FST Fès",
+      "summary": "Préparation du manuscrit et soumission d’un brevet d’invention.",
+      "publicationsCount": 3,
+      "communicationsCount": 4,
+      "progressPercentage": 80,
+      "reportFileName": "Rapport_Activite_Tazi_A3.pdf",
+      "status": "EN_ATTENTE_ENCADRANT",
+      "submittedAt": "2026-11-17",
+      "updatedAt": "2026-11-17"
+    },
     {
       "id": "re-mwbacb7l",
       "studentId": "doc-stud-anass",
@@ -994,6 +1083,45 @@
     }
   ],
   "notifications": [
+    {
+      "id": "notif-mwl34rl7-25vr",
+      "userId": "usr-prof-karim",
+      "title": "Demande de réinscription en 3ème année",
+      "message": "Le doctorant Anass Tazi a déposé son rapport d'activité annuel pour examen.",
+      "type": "INFO",
+      "isRead": false,
+      "link": "/supervisor",
+      "createdAt": "2026-11-17"
+    },
+    {
+      "id": "notif-mwl34rl2-r7h9",
+      "userId": "usr-cand-youssef",
+      "title": "Statut de pièce mis à jour : Diplôme du Baccalauréat",
+      "message": "Votre pièce \"Diplôme du Baccalauréat\" a été marquée \"REJETE\" : Scan illisible, veuillez fournir une copie couleur haute résolution.",
+      "type": "WARNING",
+      "isRead": false,
+      "link": "/candidat",
+      "createdAt": "2026-11-17"
+    },
+    {
+      "id": "notif-mwl34rkv-6kvi",
+      "userId": "usr-dir-lisac",
+      "title": "Nouveau sujet de thèse soumis pour validation",
+      "message": "Le professeur Karim Bennani a soumis le sujet : \"Modélisation IA des écoulements fluides dans le Saïss\".",
+      "type": "INFO",
+      "isRead": false,
+      "link": "/structure",
+      "createdAt": "2026-11-17"
+    },
+    {
+      "id": "notif-mwl34rf8-opli",
+      "userId": "usr-cand-mwl34rf1",
+      "title": "Compte candidat créé avec succès",
+      "message": "Bienvenue sur la plateforme GCD USMBA. Passez à l’Étape 1 pour scanner vos 4 pièces obligatoires.",
+      "type": "SUCCESS",
+      "isRead": false,
+      "createdAt": "2026-11-17"
+    },
     {
       "id": "notif-mwbacb7n-3m6w",
       "userId": "usr-prof-karim",
@@ -1289,6 +1417,103 @@
     }
   ],
   "auditLogs": [
+    {
+      "userId": "usr-doc-anass",
+      "userEmail": "anass.tazi@usmba.ac.ma",
+      "userRole": "DOCTORANT",
+      "action": "SUBMIT_RE_ENROLLMENT",
+      "entityType": "ReEnrollment",
+      "entityId": "re-mwl34rl4",
+      "details": {
+        "yearNumber": 3,
+        "academicYear": "2026-2027"
+      },
+      "id": "audit-mwl34rl5-7wgx",
+      "createdAt": "2026-11-17T19:28:15.785Z"
+    },
+    {
+      "userId": "usr-prof-karim",
+      "userEmail": "karim.bennani@usmba.ac.ma",
+      "userRole": "SUPERVISOR",
+      "action": "REVIEW_DOCUMENT",
+      "entityType": "ApplicationDocument",
+      "entityId": "doc-mwl34rkw-mv2hwu",
+      "details": {
+        "prevStatus": "DEPOSE",
+        "newStatus": "REJETE",
+        "reason": "Scan illisible, veuillez fournir une copie couleur haute résolution."
+      },
+      "id": "audit-mwl34rl1-20g3",
+      "createdAt": "2026-11-17T19:28:15.781Z"
+    },
+    {
+      "userId": "usr-cand-youssef",
+      "userEmail": "youssef.elamrani@usmba.ac.ma",
+      "userRole": "CANDIDATE",
+      "action": "UPLOAD_DOCUMENT",
+      "entityType": "ApplicationDocument",
+      "entityId": "doc-mwl34rkw-mv2hwu",
+      "details": {
+        "typeCode": "baccalaureat",
+        "fileName": "bac_test.pdf"
+      },
+      "id": "audit-mwl34rkx-s1k0",
+      "createdAt": "2026-11-17T19:28:15.777Z"
+    },
+    {
+      "userId": "usr-prof-karim",
+      "userEmail": "karim.bennani@usmba.ac.ma",
+      "userRole": "SUPERVISOR",
+      "action": "CREATE_TOPIC",
+      "entityType": "ResearchTopic",
+      "entityId": "th-mwl34rks",
+      "details": {
+        "title": "Modélisation IA des écoulements fluides dans le Saïss",
+        "laboratoryId": "struct-lisac"
+      },
+      "id": "audit-mwl34rku-iykx",
+      "createdAt": "2026-11-17T19:28:15.774Z"
+    },
+    {
+      "userId": "usr-cand-youssef",
+      "userEmail": "youssef.elamrani@usmba.ac.ma",
+      "userRole": "CANDIDATE",
+      "action": "LOGIN_FAILED",
+      "entityType": "User",
+      "entityId": "usr-cand-youssef",
+      "details": {
+        "reason": "Invalid password"
+      },
+      "id": "audit-mwl34rkp-l065",
+      "createdAt": "2026-11-17T19:28:15.769Z"
+    },
+    {
+      "userId": "usr-cand-youssef",
+      "userEmail": "youssef.elamrani@usmba.ac.ma",
+      "userRole": "CANDIDATE",
+      "action": "LOGIN_SUCCESS",
+      "entityType": "User",
+      "entityId": "usr-cand-youssef",
+      "details": {
+        "role": "CANDIDATE"
+      },
+      "id": "audit-mwl34ri1-yp7o",
+      "createdAt": "2026-11-17T19:28:15.673Z"
+    },
+    {
+      "userId": "usr-cand-mwl34rf1",
+      "userEmail": "test.cand.1794943695453@usmba.ac.ma",
+      "userRole": "CANDIDATE",
+      "action": "REGISTER_CANDIDATE",
+      "entityType": "User",
+      "entityId": "usr-cand-mwl34rf1",
+      "details": {
+        "cin": "CD517562",
+        "etablissement": "FST Fès"
+      },
+      "id": "audit-mwl34rf7-wwqv",
+      "createdAt": "2026-11-17T19:28:15.571Z"
+    },
     {
       "userId": "usr-doc-anass",
       "userEmail": "anass.tazi@usmba.ac.ma",
